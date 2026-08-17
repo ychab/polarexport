@@ -1,0 +1,16 @@
+services:
+  wiremock-polar:
+    image: wiremock/wiremock:3.12.0
+    container_name: polarexport-wiremock
+    ports:
+      - "8081:8080"
+      - "8444:8443"
+    volumes:
+      - ./tests/assets/wiremock/polar:/home/wiremock
+    command: [ "--verbose", "--https-port", "8443", "--global-response-templating" ]
+    networks:
+      - polarexport-network
+
+networks:
+  polarexport-network:
+    driver: bridge

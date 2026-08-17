@@ -1,0 +1,165 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "polarexport"
+version = "0.1.0.dev0"
+description = "Export your Polar night data as a shareable zip archive."
+readme = "README.md"
+# Upper bound keeps the interpreter aligned with mypy's python_version and ruff's
+# target-version, both of which are pinned to 3.13.
+requires-python = ">=3.13,<3.14"
+license = { text = "MIT" }
+authors = [
+  { name = "Yannick Chabbert", email = "yannick.chabbert.it@gmail.com" }
+]
+
+# Runtime dependencies are declared by the phase that first imports them, so `deptry`
+# stays meaningful instead of being silenced with per-rule ignores:
+#   phase 2 -> pydantic, pydantic-settings, typer, httpx, tenacity
+#   phase 8 -> rich
+dependencies = []
+
+[project.scripts]
+polarexport = "polarexport.infrastructure.entrypoints.cli.main:app"
+
+[dependency-groups]
+test = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-env>=1.6.0",
+    "pytest-httpx>=0.36.2",
+    "pytest-reverse>=1.9.0",
+    "pytest-xdist[psutil]>=3.8.0",
+    "coverage[toml]>=7.15.1",
+    "polyfactory>=3.3.0",
+    "time-machine>=3.2.0",
+]
+
+dev = [
+    "pre-commit>=4.6.0",
+    "deptry>=0.25.1",
+    "ruff>=0.15.21",
+    "mypy>=2.3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["polarexport"]
+
+[tool.bumpversion]
+current_version = "0.1.0.dev0"
+commit = true
+commit_args = "--no-verify"
+tag = true
+tag_name = "v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[tool.ruff]
+src = ["polarexport", "tests"]
+target-version = "py313"
+line-length = 119
+fix = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes (by default)
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "PERF", # Perflint
+    "FURB", # refurb
+]
+ignore = [
+    "E501",  # Line too long will be formatted by Ruff format
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = ["polarexport"]
+known-local-folder = ["tests"]
+section-order = [
+    "future",
+    "standard-library",
+    "httpx",
+    "pydantic",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+sections.httpx = [
+    "httpx",
+]
+sections.pydantic = [
+    "pydantic",
+    "pydantic_settings",
+]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["polarexport", "tests"]
+# plugins = "pydantic.mypy"  <- re-enable in phase 2, together with the pydantic dependency
+
+[tool.pytest.ini_options]
+junit_family = "legacy"
+addopts = [
+    "--dist=loadgroup",
+    "--cov=polarexport",
+    "--cov-report=xml",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-branch",
+    "--junitxml=junit.xml",
+]
+testpaths = ["tests"]
+pythonpath = ["."]
+env = [
+    # App settings (fixture override)
+    'POLAREXPORT_LOG_LEVEL_CLI=DEBUG',
+    'POLAREXPORT_LOG_HANDLERS_CLI=["null"]',
+    # Polar credentials — 'D:' means "default, only if not already set", so live runs can override
+    'D:POLAR_ACCESS_TOKEN=dummy-access-token',
+    'D:POLAR_USER_ID=00000000',
+    # Wiremock polar settings
+    'WIREMOCK_POLAR_ADMIN_URL=http://localhost:8081',
+    'WIREMOCK_POLAR_BASE_URL=https://localhost:8444',
+]
+filterwarnings = [
+    "always",  # Equivalent to -W always
+]
+
+[tool.coverage.run]
+source = [
+    "polarexport",
+    "tests",
+]
+branch = true
+omit = [
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "def __str__",
+    "def __repr__",
+    "@abstractmethod",
+    "if __name__ == .__main__.:",
+]
+fail_under = 100
+skip_covered = true
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"

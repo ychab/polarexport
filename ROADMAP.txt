@@ -1,0 +1,23 @@
+# ROADMAP
+
+This quick and dirty document just list the roadmap tasks.
+
+## polarexport
+
+- sport sessions export command (polarexport sport --date-min --date-max)
+- daily activity / cardio load export command
+- `polarexport auth login` — OAuth loopback server on the registered redirect URI,
+  so the manual curl dance in docs/authentication.md is no longer needed
+- v4 API adapter (90-day window, richer hypnogram) behind --api-version
+- SUMMARY.md renderer inside the archive (markdown table of all nights)
+- `polarexport data check` — integrity / gap report over the local store
+- data/ compaction (one file per month instead of per night?) if the file count gets silly
+- progress bar on long fetches
+
+## claude
+
+=> keep CLAUDE.md minimal (always loaded = tokens++)
+
+## Tests
+
+- check we don't accumulate redundant tests between unit and integration

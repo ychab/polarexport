@@ -1,0 +1,24 @@
+__pycache__
+*.pyc
+*.egg-info
+
+.python-version
+.venv
+
+.env
+
+.coverage*
+coverage.xml
+junit.xml
+/htmlcov
+
+.idea
+.vscode/
+*.swp
+**/.claude/*.local.json
+
+# Accumulated Polar payloads and generated archives
+/data
+/export
+
+.aider*
