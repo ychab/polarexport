@@ -135,6 +135,20 @@ each other and none is a prerequisite for using the tool.
 Phase 9 carries two decisions that must be made before implementing — read its "Decision required"
 sections rather than guessing.
 
+### Follow-up phases — from the 2026-08-18 review of phases 9-11
+
+Phases 9-11 are complete and green. Phase 12 is a **hard prerequisite for phase 13**: the CLI
+currently cannot start without the credentials that `polarexport auth` is meant to create.
+
+| # | Phase | Why | Real token? |
+|---|---|---|---|
+| 12 | First-run bootstrap | `polarexport --version` crashes with a pydantic traceback on a checkout with no `.env` | no |
+| 13 | `polarexport auth` | replaces the six manual steps in `docs/authentication.md` with one command | at the end |
+| 14 | Consent fidelity | a 403 source is reported `no_data` in the manifest, indistinguishable from an empty night | no |
+
+Phase 14 carries a decision that must be made before implementing. Phases 12 and 14 are small and
+independent; 13 is the large one.
+
 ## Definition of done — every phase
 
 ```bash

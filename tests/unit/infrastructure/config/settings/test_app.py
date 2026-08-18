@@ -9,12 +9,9 @@ from polarexport.infrastructure.config.settings.app import AppSettings
 
 
 class TestAppSettings:
-    def test__defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # The test suite forces POLAREXPORT_LOG_LEVEL_CLI/LOG_HANDLERS_CLI (see pyproject.toml
-        # pytest env) so the CLI stays quiet during tests — remove them to see the real defaults.
-        monkeypatch.delenv("POLAREXPORT_LOG_LEVEL_CLI", raising=False)
-        monkeypatch.delenv("POLAREXPORT_LOG_HANDLERS_CLI", raising=False)
-
+    def test__defaults(self) -> None:
+        # `isolated_settings_env` (conftest) has already stripped POLAREXPORT_* from the environment,
+        # so what is left is exactly what the model declares.
         settings = AppSettings(_env_file=None)
 
         assert settings.DEBUG is False

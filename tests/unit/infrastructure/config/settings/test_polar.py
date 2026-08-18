@@ -6,7 +6,11 @@ from polarexport.infrastructure.config.settings.polar import PolarSettings
 
 
 class TestPolarSettings:
-    def test__defaults(self) -> None:
+    def test__defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # ACCESS_TOKEN/USER_ID have no default — they are required. Everything else must fall back.
+        monkeypatch.setenv("POLAR_ACCESS_TOKEN", "dummy-access-token")
+        monkeypatch.setenv("POLAR_USER_ID", "00000000")
+
         settings = PolarSettings(_env_file=None)
 
         assert settings.ACCESS_TOKEN == "dummy-access-token"
@@ -35,6 +39,8 @@ class TestPolarSettings:
         assert "USER_ID" in str(exc_info.value)
 
     def test__client_credentials_are_independent_of_the_token_pair(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("POLAR_ACCESS_TOKEN", "dummy-access-token")
+        monkeypatch.setenv("POLAR_USER_ID", "00000000")
         monkeypatch.setenv("POLAR_CLIENT_ID", "app-client-id")
         monkeypatch.setenv("POLAR_CLIENT_SECRET", "app-client-secret")
 
