@@ -124,6 +124,7 @@ class TestNightExportUseCase:
             NightSource.SLEEP: {day: self._stored_payload(NightSource.SLEEP, day, {"raw": "sleep"})},
         }
         mock_night_store.read.side_effect = lambda source, _date_range: stored_by_source.get(source, {})
+        mock_night_store.read_availability.return_value = None
         mock_night_mapper.to_sleep.return_value = SleepFactory.build(date=day)
         mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
@@ -136,6 +137,41 @@ class TestNightExportUseCase:
 
         assert report.manifest.source_availability[NightSource.SLEEP] == SourceAvailability.AVAILABLE
         assert report.manifest.source_availability[NightSource.RECHARGE] == SourceAvailability.NO_DATA
+
+    async def test__requested_source_marked_unavailable_in_store__reported_unavailable_not_no_data(
+        self,
+        use_case: NightExportUseCase,
+        mock_night_store: mock.AsyncMock,
+        mock_night_mapper: mock.Mock,
+        mock_night_archiver: mock.AsyncMock,
+        date_range: DateRange,
+        day: date,
+        today: date,
+        generated_at: datetime,
+        archive_result: ArchiveResult,
+        tmp_path: Path,
+    ) -> None:
+        # RECHARGE has no stored payloads AND was last observed as a 403 — the manifest must say
+        # `unavailable`, not the `no_data` it would say for a source that was simply never captured.
+        stored_by_source = {
+            NightSource.SLEEP: {day: self._stored_payload(NightSource.SLEEP, day, {"raw": "sleep"})},
+        }
+        mock_night_store.read.side_effect = lambda source, _date_range: stored_by_source.get(source, {})
+        mock_night_store.read_availability.side_effect = lambda source: (
+            SourceAvailability.UNAVAILABLE if source == NightSource.RECHARGE else None
+        )
+        mock_night_mapper.to_sleep.return_value = SleepFactory.build(date=day)
+        mock_night_archiver.write.return_value = archive_result
+        export_in = NightExportInputFactory.build(
+            date_range=date_range,
+            sources=frozenset({NightSource.SLEEP, NightSource.RECHARGE}),
+            output_dir=tmp_path,
+        )
+
+        report = await use_case.export(export_in, today=today, generated_at=generated_at)
+
+        assert report.manifest.source_availability[NightSource.SLEEP] == SourceAvailability.AVAILABLE
+        assert report.manifest.source_availability[NightSource.RECHARGE] == SourceAvailability.UNAVAILABLE
 
     async def test__store_empty_for_every_date__raises_no_night_data(
         self,

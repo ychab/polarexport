@@ -60,11 +60,14 @@ class NightSyncUseCase:
         skipped = len(dates) - len(missing)
 
         if not missing:
-            return SourceSyncStat(
-                availability=SourceAvailability.AVAILABLE, fetched=0, skipped=skipped, empty=0, requests=0
-            )
+            # Nothing was asked of Polar on this path, so nothing was measured here — report the last
+            # availability actually observed for this source, not a hardcoded guess.
+            stored_availability = await self._night_store.read_availability(source)
+            availability = stored_availability if stored_availability is not None else SourceAvailability.AVAILABLE
+            return SourceSyncStat(availability=availability, fetched=0, skipped=skipped, empty=0, requests=0)
 
         result = await self._night_provider.fetch(source, missing)
+        await self._night_store.write_availability(source, result.availability, observed_at=datetime.now(UTC))
 
         fetched = empty = 0
         for day, payload in result.payloads.items():

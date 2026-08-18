@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from datetime import datetime
 from unittest import mock
 
 import pytest
@@ -55,7 +56,7 @@ class TestNightSyncUseCase:
         written_payloads = {call.args[0].date: call.args[0].payload for call in mock_night_store.write.call_args_list}
         assert written_payloads == {day1: {"foo": "bar"}, day2: {"foo": "baz"}}
 
-    async def test__nothing_missing__provider_never_awaited(
+    async def test__nothing_missing__no_prior_record__defaults_to_available(
         self,
         use_case: NightSyncUseCase,
         mock_night_provider: mock.AsyncMock,
@@ -64,6 +65,7 @@ class TestNightSyncUseCase:
         today: date,
     ) -> None:
         mock_night_store.missing.return_value = ()
+        mock_night_store.read_availability.return_value = None
         sync_in = NightSyncInputFactory.build(date_range=date_range, sources=frozenset({NightSource.SLEEP}))
 
         report = await use_case.sync(sync_in, today=today)
@@ -73,6 +75,49 @@ class TestNightSyncUseCase:
         assert stat.skipped == 2
         assert stat.fetched == 0
         assert stat.availability == SourceAvailability.AVAILABLE
+
+    async def test__nothing_missing__prior_record_unavailable__reports_stored_availability(
+        self,
+        use_case: NightSyncUseCase,
+        mock_night_provider: mock.AsyncMock,
+        mock_night_store: mock.AsyncMock,
+        date_range: DateRange,
+        today: date,
+    ) -> None:
+        # Nothing is asked of Polar on this path, so nothing gets measured here — the last real
+        # observation (a 403) must still be what gets reported, not a hardcoded AVAILABLE.
+        mock_night_store.missing.return_value = ()
+        mock_night_store.read_availability.return_value = SourceAvailability.UNAVAILABLE
+        sync_in = NightSyncInputFactory.build(date_range=date_range, sources=frozenset({NightSource.SLEEP}))
+
+        report = await use_case.sync(sync_in, today=today)
+
+        mock_night_provider.fetch.assert_not_awaited()
+        stat = report.stats[NightSource.SLEEP]
+        assert stat.availability == SourceAvailability.UNAVAILABLE
+
+    async def test__source_fetched__availability_written_to_store(
+        self,
+        use_case: NightSyncUseCase,
+        mock_night_provider: mock.AsyncMock,
+        mock_night_store: mock.AsyncMock,
+        date_range: DateRange,
+        today: date,
+    ) -> None:
+        mock_night_store.missing.return_value = (date(2026, 8, 10), date(2026, 8, 11))
+        mock_night_provider.fetch.return_value = SourceFetchResult(
+            payloads={date(2026, 8, 10): {"x": 1}, date(2026, 8, 11): {"x": 2}},
+            availability=SourceAvailability.AVAILABLE,
+            request_count=2,
+        )
+        sync_in = NightSyncInputFactory.build(date_range=date_range, sources=frozenset({NightSource.SLEEP}))
+
+        await use_case.sync(sync_in, today=today)
+
+        mock_night_store.write_availability.assert_awaited_once()
+        call = mock_night_store.write_availability.call_args
+        assert call.args == (NightSource.SLEEP, SourceAvailability.AVAILABLE)
+        assert isinstance(call.kwargs["observed_at"], datetime)
 
     async def test__force_refresh__provider_awaited_even_for_stored_dates(
         self,

@@ -14,6 +14,7 @@ from polarexport.application.ports.stores.night import NightStorePort
 from polarexport.application.ports.stores.night import StoredPayload
 from polarexport.domain.const import API_NAME
 from polarexport.domain.enums import NightSource
+from polarexport.domain.enums import SourceAvailability
 from polarexport.domain.utils.dates import is_outside_history_window
 from polarexport.domain.utils.dates import iterate_dates
 from polarexport.domain.value_objects.date_range import DateRange
@@ -49,6 +50,14 @@ class FilesystemNightStore(NightStorePort):
             if day not in stored or (stored[day].payload is None and not is_outside_history_window(day, today=today))
         )
 
+    async def write_availability(
+        self, source: NightSource, availability: SourceAvailability, *, observed_at: datetime
+    ) -> None:
+        await asyncio.to_thread(self._write_availability_sync, source, availability, observed_at)
+
+    async def read_availability(self, source: NightSource) -> SourceAvailability | None:
+        return await asyncio.to_thread(self._read_availability_sync, source)
+
     def _path_for(self, source: NightSource, day: date) -> Path:
         return (
             self._data_dir
@@ -59,12 +68,12 @@ class FilesystemNightStore(NightStorePort):
             / f"{day.isoformat()}.json"
         )
 
+    def _status_path_for(self, source: NightSource) -> Path:
+        return self._data_dir / self._api / source.value / "_status.json"
+
     def _write_sync(self, stored: StoredPayload) -> None:
         if stored.api != self._api:
             raise ValueError(f"StoredPayload.api {stored.api!r} does not match store api {self._api!r}")
-
-        path = self._path_for(stored.source, stored.date)
-        path.parent.mkdir(parents=True, exist_ok=True)
 
         envelope: dict[str, Any] = {
             "schema_version": _SCHEMA_VERSION,
@@ -74,6 +83,19 @@ class FilesystemNightStore(NightStorePort):
             "fetched_at": stored.fetched_at.isoformat(),
             "payload": stored.payload,
         }
+        self._write_json_atomic_sync(self._path_for(stored.source, stored.date), envelope)
+
+    def _write_availability_sync(
+        self, source: NightSource, availability: SourceAvailability, observed_at: datetime
+    ) -> None:
+        envelope: dict[str, Any] = {
+            "availability": availability.value,
+            "observed_at": observed_at.isoformat(),
+        }
+        self._write_json_atomic_sync(self._status_path_for(source), envelope)
+
+    def _write_json_atomic_sync(self, path: Path, envelope: dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
 
         # pathlib is synchronous while the port is async — offloaded to a thread by the callers above.
         fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
@@ -112,3 +134,16 @@ class FilesystemNightStore(NightStorePort):
             api=envelope["api"],
             payload=envelope["payload"],
         )
+
+    def _read_availability_sync(self, source: NightSource) -> SourceAvailability | None:
+        path = self._status_path_for(source)
+        if not path.is_file():
+            return None
+
+        try:
+            envelope: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse stored source availability, skipping", extra={"path": str(path)})
+            return None
+
+        return SourceAvailability(envelope["availability"])

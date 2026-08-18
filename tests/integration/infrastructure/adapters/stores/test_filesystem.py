@@ -1,11 +1,14 @@
 import logging
 import os
+from datetime import UTC
 from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from polarexport.domain.enums import NightSource
+from polarexport.domain.enums import SourceAvailability
 from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.infrastructure.adapters.stores.filesystem import FilesystemNightStore
 
@@ -95,3 +98,60 @@ class TestFilesystemNightStore:
 
         for path in tmp_path.rglob("*.json"):
             assert access_token not in path.read_text(encoding="utf-8")
+
+
+class TestFilesystemNightStoreAvailability:
+    @pytest.fixture
+    def store(self, tmp_path: Path) -> FilesystemNightStore:
+        return FilesystemNightStore(data_dir=tmp_path, api="polar-accesslink-v3")
+
+    async def test__never_written__read_returns_none(self, store: FilesystemNightStore) -> None:
+        result = await store.read_availability(NightSource.RECHARGE)
+
+        assert result is None
+
+    async def test__write_then_read__round_trips(self, store: FilesystemNightStore) -> None:
+        await store.write_availability(
+            NightSource.RECHARGE, SourceAvailability.UNAVAILABLE, observed_at=datetime(2026, 8, 15, tzinfo=UTC)
+        )
+
+        result = await store.read_availability(NightSource.RECHARGE)
+
+        assert result == SourceAvailability.UNAVAILABLE
+
+    async def test__write_twice__overwrites_with_latest_observation(self, store: FilesystemNightStore) -> None:
+        await store.write_availability(
+            NightSource.SLEEP, SourceAvailability.UNAVAILABLE, observed_at=datetime(2026, 8, 14, tzinfo=UTC)
+        )
+        await store.write_availability(
+            NightSource.SLEEP, SourceAvailability.AVAILABLE, observed_at=datetime(2026, 8, 15, tzinfo=UTC)
+        )
+
+        result = await store.read_availability(NightSource.SLEEP)
+
+        assert result == SourceAvailability.AVAILABLE
+
+    async def test__write__creates_status_file_at_expected_path(
+        self, store: FilesystemNightStore, tmp_path: Path
+    ) -> None:
+        await store.write_availability(
+            NightSource.SLEEP, SourceAvailability.AVAILABLE, observed_at=datetime(2026, 8, 15, tzinfo=UTC)
+        )
+
+        assert (tmp_path / "polar-accesslink-v3" / "sleep" / "_status.json").is_file()
+
+    async def test__read__corrupt_file_logs_warning_and_returns_none(
+        self,
+        store: FilesystemNightStore,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        status_path = tmp_path / "polar-accesslink-v3" / "recharge" / "_status.json"
+        status_path.parent.mkdir(parents=True)
+        status_path.write_text("not valid json {", encoding="utf-8")
+
+        with caplog.at_level(logging.WARNING):
+            result = await store.read_availability(NightSource.RECHARGE)
+
+        assert result is None
+        assert any(record.levelno == logging.WARNING for record in caplog.records)

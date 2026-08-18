@@ -51,6 +51,32 @@ class TestNightSyncUseCase:
         assert payload is not None
         assert payload["date"] == day.isoformat()
 
+    async def test__403_on_one_source__other_sources_sync_and_403_leaves_durable_record(
+        self,
+        polar_client: PolarAccessLinkClient,
+        night_store: FilesystemNightStore,
+        date_range: DateRange,
+        day: date,
+        polar_wiremock: WireMockContext,
+    ) -> None:
+        polar_wiremock.create_mapping(
+            method="GET",
+            url_path=f"/v3/users/nightly-recharge/{day.isoformat()}",
+            status=403,
+        )
+        sources = frozenset({NightSource.SLEEP, NightSource.RECHARGE})
+        sync_in = NightSyncInput(date_range=date_range, sources=sources)
+        use_case = NightSyncUseCase(night_provider=polar_client, night_store=night_store)
+
+        report = await use_case.sync(sync_in, today=day)
+
+        assert report.stats[NightSource.SLEEP].availability == SourceAvailability.AVAILABLE
+        assert report.stats[NightSource.RECHARGE].availability == SourceAvailability.UNAVAILABLE
+        # The record must be durable — readable independently of this sync run, the way a later,
+        # separate `export` invocation (possibly under `--no-refresh`) would read it.
+        assert await night_store.read_availability(NightSource.RECHARGE) == SourceAvailability.UNAVAILABLE
+        assert await night_store.read_availability(NightSource.SLEEP) == SourceAvailability.AVAILABLE
+
     async def test__second_sync__nothing_re_fetched_from_polar(
         self,
         polar_client: PolarAccessLinkClient,

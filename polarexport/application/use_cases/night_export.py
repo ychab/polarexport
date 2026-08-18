@@ -40,9 +40,11 @@ class NightExportUseCase:
 
     async def export(self, night_in: NightExportInput, *, today: date, generated_at: datetime) -> ExportReport:
         stored_by_source: dict[NightSource, Mapping[date, StoredPayload]] = {}
+        availability_by_source: dict[NightSource, SourceAvailability | None] = {}
         for source in NightSource:
             if source in night_in.sources:
                 stored_by_source[source] = await self._night_store.read(source, night_in.date_range)
+                availability_by_source[source] = await self._night_store.read_availability(source)
 
         sleeps = self._map_source(NightSource.SLEEP, stored_by_source, self._night_mapper.to_sleep)
         recharges = self._map_source(NightSource.RECHARGE, stored_by_source, self._night_mapper.to_nightly_recharge)
@@ -93,7 +95,7 @@ class NightExportUseCase:
             date_range=night_in.date_range,
             sources_requested=sources_requested,
             source_availability={
-                source: (SourceAvailability.AVAILABLE if mapped_counts[source] > 0 else SourceAvailability.NO_DATA)
+                source: self._resolve_availability(mapped_counts[source], availability_by_source.get(source))
                 if source in night_in.sources
                 else SourceAvailability.NOT_REQUESTED
                 for source in NightSource
@@ -140,3 +142,12 @@ class NightExportUseCase:
                     "Failed to map payload to domain entity", extra={"source": str(source), "date": str(day)}
                 )
         return entities
+
+    def _resolve_availability(
+        self, mapped_count: int, stored_availability: SourceAvailability | None
+    ) -> SourceAvailability:
+        if mapped_count > 0:
+            return SourceAvailability.AVAILABLE
+        if stored_availability == SourceAvailability.UNAVAILABLE:
+            return SourceAvailability.UNAVAILABLE
+        return SourceAvailability.NO_DATA

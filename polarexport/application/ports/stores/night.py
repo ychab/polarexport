@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from polarexport.domain.enums import NightSource
+from polarexport.domain.enums import SourceAvailability
 from polarexport.domain.value_objects.date_range import DateRange
 
 
@@ -60,5 +61,34 @@ class NightStorePort(ABC):
 
         Returns:
             The subset of `dates` that still need fetching.
+        """
+        ...
+
+    @abstractmethod
+    async def write_availability(
+        self, source: NightSource, availability: SourceAvailability, *, observed_at: datetime
+    ) -> None:
+        """Persist the most recently observed availability for a source.
+
+        This is provenance about the source as a whole, distinct from the per-date payloads: it is
+        what lets an export tell "consent missing" (`UNAVAILABLE`) apart from "consent fine, nothing
+        recorded" (`NO_DATA`) even when the export itself found nothing to map.
+
+        Args:
+            source: The Polar data source.
+            availability: The availability actually observed on the last real fetch attempt.
+            observed_at: When this availability was observed.
+        """
+        ...
+
+    @abstractmethod
+    async def read_availability(self, source: NightSource) -> SourceAvailability | None:
+        """Read the most recently observed availability for a source.
+
+        Args:
+            source: The Polar data source.
+
+        Returns:
+            The last observed availability, or `None` if the source has never been fetched.
         """
         ...
