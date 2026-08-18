@@ -43,10 +43,11 @@ class TestZipNightArchiverWrite:
         manifest = ExportManifestFactory.build(date_range=date_range, night_count=1, gaps=())
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=True)
+        result = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=True)
 
-        assert path == target
-        assert path.read_bytes() != b"not a real zip"
+        assert result.path == target
+        assert result.path.read_bytes() != b"not a real zip"
+        assert result.size_bytes == target.stat().st_size
 
     async def test__output_dir_missing__is_created(self, tmp_path: Path, date_range: DateRange) -> None:
         output_dir = tmp_path / "fresh" / "export"
@@ -54,9 +55,10 @@ class TestZipNightArchiverWrite:
         manifest = ExportManifestFactory.build(date_range=date_range, night_count=1, gaps=())
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, {}, output_dir=output_dir, include_raw=False, force=False)
+        result = await archiver.write([night], manifest, {}, output_dir=output_dir, include_raw=False, force=False)
 
-        assert path.is_file()
+        assert result.path.is_file()
+        assert result.size_bytes == result.path.stat().st_size
 
 
 class TestZipNightArchiverWriteSerializationFailure:

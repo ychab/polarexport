@@ -2,6 +2,7 @@ from abc import ABC
 from abc import abstractmethod
 from collections.abc import Mapping
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,12 @@ from typing import Any
 from polarexport.domain.entities.export import ExportManifest
 from polarexport.domain.entities.night import Night
 from polarexport.domain.enums import NightSource
+
+
+@dataclass(frozen=True, kw_only=True)
+class ArchiveResult:
+    path: Path
+    size_bytes: int
 
 
 class NightArchiverPort(ABC):
@@ -24,8 +31,8 @@ class NightArchiverPort(ABC):
         output_dir: Path,
         include_raw: bool,
         force: bool,
-    ) -> Path:
-        """Write the export archive and return its path.
+    ) -> ArchiveResult:
+        """Write the export archive and return its path and size.
 
         Args:
             nights: The merged nights to include in the archive.
@@ -36,7 +43,7 @@ class NightArchiverPort(ABC):
             force: Whether to overwrite an existing archive at the target path.
 
         Returns:
-            The path of the written archive.
+            The path and byte size of the written archive.
 
         Raises:
             ArchiveAlreadyExistsError: The target archive exists and `force` is False.

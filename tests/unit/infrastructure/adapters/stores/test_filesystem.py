@@ -109,3 +109,14 @@ class TestFilesystemNightStoreWrite:
         await store.write(stored)
 
         assert (data_dir / "polar-accesslink-v3" / "sleep" / "2026" / "08" / "2026-08-15.json").is_file()
+
+    async def test__stored_api_mismatches_store_api__raises_value_error(self, tmp_path: Path) -> None:
+        store = FilesystemNightStore(data_dir=tmp_path, api="polar-accesslink-v3")
+        stored = StoredPayloadFactory.build(
+            source=NightSource.SLEEP, date=date(2026, 8, 15), payload={"a": 1}, api="some-other-api"
+        )
+
+        with pytest.raises(ValueError, match="some-other-api"):
+            await store.write(stored)
+
+        assert list(tmp_path.iterdir()) == []

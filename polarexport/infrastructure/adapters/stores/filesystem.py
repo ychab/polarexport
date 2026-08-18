@@ -12,11 +12,11 @@ from typing import Any
 
 from polarexport.application.ports.stores.night import NightStorePort
 from polarexport.application.ports.stores.night import StoredPayload
+from polarexport.domain.const import API_NAME
 from polarexport.domain.enums import NightSource
 from polarexport.domain.utils.dates import is_outside_history_window
 from polarexport.domain.utils.dates import iterate_dates
 from polarexport.domain.value_objects.date_range import DateRange
-from polarexport.infrastructure.adapters.providers.polar.endpoints import API_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,9 @@ class FilesystemNightStore(NightStorePort):
         )
 
     def _write_sync(self, stored: StoredPayload) -> None:
+        if stored.api != self._api:
+            raise ValueError(f"StoredPayload.api {stored.api!r} does not match store api {self._api!r}")
+
         path = self._path_for(stored.source, stored.date)
         path.parent.mkdir(parents=True, exist_ok=True)
 

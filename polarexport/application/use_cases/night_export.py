@@ -107,7 +107,7 @@ class NightExportUseCase:
             source: {day: stored.payload for day, stored in stored_payloads.items() if stored.payload is not None}
             for source, stored_payloads in stored_by_source.items()
         }
-        archive_path = await self._night_archiver.write(
+        archive_result = await self._night_archiver.write(
             nights,
             manifest,
             raw,
@@ -117,8 +117,8 @@ class NightExportUseCase:
         )
 
         return ExportReport(
-            archive_path=archive_path,
-            archive_size_bytes=archive_path.stat().st_size,
+            archive_path=archive_result.path,
+            archive_size_bytes=archive_result.size_bytes,
             manifest=manifest,
             nights=nights,
         )

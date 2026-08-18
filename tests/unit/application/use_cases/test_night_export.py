@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 
+from polarexport.application.ports.archivers.night import ArchiveResult
 from polarexport.application.ports.stores.night import StoredPayload
 from polarexport.application.use_cases.night_export import NightExportUseCase
 from polarexport.domain.enums import NightSource
@@ -39,9 +40,11 @@ class TestNightExportUseCase:
 
     @pytest.fixture
     def archive_path(self, tmp_path: Path) -> Path:
-        path = tmp_path / "polarexport-nights-2026-08-10_2026-08-10.zip"
-        path.write_bytes(b"archive-content")
-        return path
+        return tmp_path / "polarexport-nights-2026-08-10_2026-08-10.zip"
+
+    @pytest.fixture
+    def archive_result(self, archive_path: Path) -> ArchiveResult:
+        return ArchiveResult(path=archive_path, size_bytes=16)
 
     @pytest.fixture
     def use_case(
@@ -71,7 +74,7 @@ class TestNightExportUseCase:
         day: date,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
     ) -> None:
         stored_by_source = {
@@ -83,7 +86,7 @@ class TestNightExportUseCase:
         recharge = NightlyRechargeFactory.build(date=day)
         mock_night_mapper.to_sleep.return_value = sleep
         mock_night_mapper.to_nightly_recharge.return_value = recharge
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=date_range,
             sources=frozenset({NightSource.SLEEP, NightSource.RECHARGE}),
@@ -95,8 +98,8 @@ class TestNightExportUseCase:
         assert report.manifest.night_count == 1
         assert report.nights[0].sleep is sleep
         assert report.nights[0].recharge is recharge
-        assert report.archive_path == archive_path
-        assert report.archive_size_bytes == archive_path.stat().st_size
+        assert report.archive_path == archive_result.path
+        assert report.archive_size_bytes == archive_result.size_bytes
         assert report.manifest.source_availability[NightSource.SLEEP] == SourceAvailability.AVAILABLE
         assert report.manifest.source_availability[NightSource.SKIN_TEMPERATURE] == SourceAvailability.NOT_REQUESTED
         call_kwargs = mock_night_archiver.write.call_args.kwargs
@@ -114,7 +117,7 @@ class TestNightExportUseCase:
         day: date,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
     ) -> None:
         stored_by_source = {
@@ -122,7 +125,7 @@ class TestNightExportUseCase:
         }
         mock_night_store.read.side_effect = lambda source, _date_range: stored_by_source.get(source, {})
         mock_night_mapper.to_sleep.return_value = SleepFactory.build(date=day)
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=date_range,
             sources=frozenset({NightSource.SLEEP, NightSource.RECHARGE}),
@@ -162,7 +165,7 @@ class TestNightExportUseCase:
         day: date,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -174,7 +177,7 @@ class TestNightExportUseCase:
         mock_night_mapper.to_sleep.side_effect = ValueError("malformed sleep payload")
         recharge = NightlyRechargeFactory.build(date=day)
         mock_night_mapper.to_nightly_recharge.return_value = recharge
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=date_range,
             sources=frozenset({NightSource.SLEEP, NightSource.RECHARGE}),
@@ -224,7 +227,7 @@ class TestNightExportUseCase:
         day: date,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
     ) -> None:
         stored_by_source = {
@@ -234,7 +237,7 @@ class TestNightExportUseCase:
         mock_night_store.read.side_effect = lambda source, _date_range: stored_by_source.get(source, {})
         recharge = NightlyRechargeFactory.build(date=day)
         mock_night_mapper.to_nightly_recharge.return_value = recharge
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=date_range,
             sources=frozenset({NightSource.SLEEP, NightSource.RECHARGE}),
@@ -256,7 +259,7 @@ class TestNightExportUseCase:
         day: date,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -266,7 +269,7 @@ class TestNightExportUseCase:
             old_day: self._stored_payload(NightSource.SLEEP, old_day, {"raw": "sleep"})
         }
         mock_night_mapper.to_sleep.return_value = SleepFactory.build(date=old_day)
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=date_range, sources=frozenset({NightSource.SLEEP}), output_dir=tmp_path
         )
@@ -287,12 +290,12 @@ class TestNightExportUseCase:
         day: date,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
     ) -> None:
         mock_night_store.read.return_value = {day: self._stored_payload(NightSource.SLEEP, day, {"raw": "sleep"})}
         mock_night_mapper.to_sleep.return_value = SleepFactory.build(date=day)
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=date_range, sources=frozenset({NightSource.SLEEP}), output_dir=tmp_path, include_raw=False
         )
@@ -323,10 +326,10 @@ class TestNightExportUseCase:
         five_day_range: DateRange,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
     ) -> None:
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=five_day_range,
             sources=frozenset({NightSource.SLEEP}),
@@ -349,10 +352,10 @@ class TestNightExportUseCase:
         five_day_range: DateRange,
         today: date,
         generated_at: datetime,
-        archive_path: Path,
+        archive_result: ArchiveResult,
         tmp_path: Path,
     ) -> None:
-        mock_night_archiver.write.return_value = archive_path
+        mock_night_archiver.write.return_value = archive_result
         export_in = NightExportInputFactory.build(
             date_range=five_day_range,
             sources=frozenset({NightSource.SLEEP}),

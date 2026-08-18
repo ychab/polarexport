@@ -36,6 +36,6 @@ class NightProviderPort(ABC):
             The raw payloads keyed by date, the source's availability, and the request count.
 
         Raises:
-            PolarRateLimitError: Rate limits were still exceeded after retries.
+            ProviderRateLimitError: Rate limits were still exceeded after retries.
         """
         ...

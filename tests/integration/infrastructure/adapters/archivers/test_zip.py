@@ -29,9 +29,9 @@ class TestZipNightArchiverWrite:
         raw = {NightSource.SLEEP: {date(2026, 7, 20): {"date": "2026-07-20", "sleep_score": 80}}}
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, raw, output_dir=tmp_path, include_raw=True, force=False)
+        result = await archiver.write([night], manifest, raw, output_dir=tmp_path, include_raw=True, force=False)
 
-        with zipfile.ZipFile(path) as zip_file:
+        with zipfile.ZipFile(result.path) as zip_file:
             assert set(zip_file.namelist()) == {
                 "manifest.json",
                 "README.md",
@@ -46,9 +46,9 @@ class TestZipNightArchiverWrite:
         raw = {NightSource.SLEEP: {date(2026, 7, 20): {"date": "2026-07-20"}}}
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, raw, output_dir=tmp_path, include_raw=False, force=False)
+        result = await archiver.write([night], manifest, raw, output_dir=tmp_path, include_raw=False, force=False)
 
-        with zipfile.ZipFile(path) as zip_file:
+        with zipfile.ZipFile(result.path) as zip_file:
             names = set(zip_file.namelist())
             assert names == {"manifest.json", "README.md", "nights.json"}
 
@@ -65,9 +65,9 @@ class TestZipNightArchiverWrite:
         manifest = ExportManifestFactory.build(date_range=date_range, night_count=1, gaps=())
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
+        result = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
 
-        with zipfile.ZipFile(path) as zip_file:
+        with zipfile.ZipFile(result.path) as zip_file:
             document = json.loads(zip_file.read("nights.json"))
 
         assert document["night_count"] == 1
@@ -92,9 +92,9 @@ class TestZipNightArchiverWrite:
         )
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
+        result = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
 
-        with zipfile.ZipFile(path) as zip_file:
+        with zipfile.ZipFile(result.path) as zip_file:
             manifest_json = json.loads(zip_file.read("manifest.json"))
 
         assert manifest_json["tool_name"] == manifest.tool_name
@@ -125,9 +125,9 @@ class TestZipNightArchiverWrite:
         )
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
+        result = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
 
-        with zipfile.ZipFile(path) as zip_file:
+        with zipfile.ZipFile(result.path) as zip_file:
             manifest_json = json.loads(zip_file.read("manifest.json"))
             readme = zip_file.read("README.md").decode("utf-8")
 
@@ -154,9 +154,9 @@ class TestZipNightArchiverWrite:
         )
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
+        result = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
 
-        with zipfile.ZipFile(path) as zip_file:
+        with zipfile.ZipFile(result.path) as zip_file:
             readme = zip_file.read("README.md").decode("utf-8")
 
         assert readme.strip()
@@ -172,8 +172,8 @@ class TestZipNightArchiverWrite:
         raw = {NightSource.SLEEP: {date(2026, 7, 20): {"date": "2026-07-20", "sleep_score": 80}}}
         archiver = ZipNightArchiver()
 
-        path = await archiver.write([night], manifest, raw, output_dir=tmp_path, include_raw=True, force=False)
+        result = await archiver.write([night], manifest, raw, output_dir=tmp_path, include_raw=True, force=False)
 
-        with zipfile.ZipFile(path) as zip_file:
+        with zipfile.ZipFile(result.path) as zip_file:
             for name in zip_file.namelist():
                 assert access_token not in zip_file.read(name).decode("utf-8")

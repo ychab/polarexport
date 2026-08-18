@@ -160,3 +160,60 @@ I didn't commit — let me know if you'd like that done.
 
 
 --- plan 10 ---
+
+Phase 10 is implemented and both gates are green.
+
+Decision made without asking: the phase left open whether to promote a neutral rate-limit exception to domain/exceptions.py or just reword the port docstring. I checked museflow (the conventions source of truth) and found it already uses this exact pattern — a domain-level ProviderRateLimitExceeded raised directly by adapters. I mirrored that: added ProviderRateLimitError to domain/exceptions.py, made PolarRateLimitError subclass it (existing raise site untouched), and pointed the port docstring at the domain exception instead of naming the adapter class.
+
+Changes:
+- domain/exceptions.py — new ProviderRateLimitError.
+- infrastructure/adapters/providers/polar/exceptions.py — PolarRateLimitError now also subclasses ProviderRateLimitError.
+- application/ports/providers/night.py — docstring now names the domain exception, not the adapter class.
+- infrastructure/entrypoints/cli/commands/night.py — three new except clauses ahead of the existing 401 handling: ProviderRateLimitError, httpx.RequestError (network/DNS, names the base URL, suggests --no-refresh), and a widened httpx.HTTPStatusError that keeps the 401 special-case but now handles any other status gracefully instead of re-raising. Every message is red, on stderr, exit code 1, and notes that already-fetched nights are safe in data/.
+- tests/.../test_night.py — replaced the old "500 propagates as traceback" test (no longer true) with three new tests covering rate-limit, connection error, and generic 5xx, each asserting exit code 1, stderr content, and no traceback.
+
+make lint and make test both pass clean (100% branch coverage, 275 passed / 5 skipped).
+
+
+--- plan 11 --- ??
+
+Phase 11 is implemented and both gates are green.
+
+Decision asked before implementing: item 4 (missing use-case integration tests) was flagged in the
+phase file as a deliberate judgement call between adding real tests (option A) or deleting the empty
+directory and documenting the gap (option B). Asked the user; they chose option A.
+
+Changes:
+- application/ports/archivers/night.py — new frozen `ArchiveResult` (path + size_bytes) dataclass
+  beside the port, `write()` now returns it instead of a bare `Path`.
+- infrastructure/adapters/archivers/zip.py — `ZipNightArchiver.write()` computes `size_bytes` from the
+  already-written file itself and returns `ArchiveResult`.
+- application/use_cases/night_export.py — no longer calls `archive_path.stat()`; reads
+  `archive_result.path` / `.size_bytes` instead. The use case no longer touches the filesystem.
+- domain/const.py — new `API_NAME` constant (single source of truth for the on-disk/API identifier).
+- infrastructure/adapters/providers/polar/endpoints.py — dropped its own `API_NAME` (nothing else
+  imported it from there, so no re-export was left behind).
+- infrastructure/adapters/stores/filesystem.py — imports `API_NAME` from `domain/const.py` instead of
+  the Polar provider package; `_write_sync` now raises `ValueError` if `stored.api` disagrees with the
+  store's configured `self._api`, rather than silently filing it under the wrong directory name.
+- application/use_cases/night_sync.py — dropped its local `_POLAR_API_NAME` duplicate, uses the domain
+  constant instead.
+- tests/integration/application/use_cases/test_night_sync.py and test_night_export.py — new, using a
+  real `FilesystemNightStore` on `tmp_path`; sync test also uses a real `PolarAccessLinkClient` against
+  WireMock, export test uses a real `PolarNightMapper` and `ZipNightArchiver`.
+- Updated unit/integration tests for the archiver and use case to match the new `ArchiveResult` return
+  type, plus a new unit test for the store's api-mismatch `ValueError` branch.
+
+make lint and make test both pass clean (100% branch coverage, 279 passed / 5 skipped).
+
+
+-- plan 11 --
+
+Phase 11 is fully implemented, make lint and make test are both green (279 passed, 5 skipped, 100% branch coverage). Summary of what changed:
+
+1. Filesystem I/O out of the use case — added ArchiveResult (path + size_bytes) beside NightArchiverPort; ZipNightArchiver computes the size itself and returns it, so NightExportUseCase no longer calls archive_path.stat().
+2. Cross-adapter import removed — API_NAME moved to domain/const.py; FilesystemNightStore now imports it from there instead of the Polar provider package (the unused re-export in endpoints.py was dropped rather than left dangling).
+3. Duplicate constant collapsed — night_sync.py's local _POLAR_API_NAME is gone, now uses the domain constant. Also fixed the latent path/envelope inconsistency: FilesystemNightStore._write_sync now raises ValueError if stored.api disagrees with the store's configured API name, rather than silently filing it under a mismatched directory.
+4. Use-case integration tests added (per your choice of option A) — new tests/integration/application/use_cases/test_night_sync.py and test_night_export.py with real collaborators (FilesystemNightStore, WireMock-backed client, PolarNightMapper, ZipNightArchiver).
+
+I also renamed the plan file to 11-layering-cleanup-DONE.md and appended a summary entry to docs/summary.md, matching the convention already used for phases 9 and 10. Nothing is committed — let me know if you'd like that done.

@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from polarexport.application.ports.archivers.night import ArchiveResult
 from polarexport.application.ports.archivers.night import NightArchiverPort
 from polarexport.domain.const import ARCHIVE_NAME_TEMPLATE
 from polarexport.domain.entities.export import ExportManifest
@@ -40,7 +41,7 @@ class ZipNightArchiver(NightArchiverPort):
         output_dir: Path,
         include_raw: bool,
         force: bool,
-    ) -> Path:
+    ) -> ArchiveResult:
         return await asyncio.to_thread(self._write_sync, nights, manifest, raw, output_dir, include_raw, force)
 
     def _write_sync(
@@ -51,7 +52,7 @@ class ZipNightArchiver(NightArchiverPort):
         output_dir: Path,
         include_raw: bool,
         force: bool,
-    ) -> Path:
+    ) -> ArchiveResult:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         target = output_dir / ARCHIVE_NAME_TEMPLATE.format(
@@ -83,8 +84,9 @@ class ZipNightArchiver(NightArchiverPort):
             raise
 
         tmp_path.replace(target)
+        size_bytes = target.stat().st_size
         logger.info("Wrote night export archive", extra={"path": str(target), "night_count": len(nights)})
-        return target
+        return ArchiveResult(path=target, size_bytes=size_bytes)
 
     def _write_raw_entries(
         self, zip_file: zipfile.ZipFile, raw: Mapping[NightSource, Mapping[date, dict[str, Any]]]

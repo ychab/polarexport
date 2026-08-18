@@ -18,6 +18,7 @@ from typer.testing import CliRunner
 from polarexport.domain.enums import NightSource
 from polarexport.domain.exceptions import ArchiveAlreadyExistsError
 from polarexport.domain.exceptions import NoNightDataError
+from polarexport.domain.exceptions import ProviderRateLimitError
 from polarexport.infrastructure.entrypoints.cli.commands.night import night_logic
 from polarexport.infrastructure.entrypoints.cli.commands.night import parse_sources
 from polarexport.infrastructure.entrypoints.cli.main import app
@@ -277,13 +278,45 @@ class TestNightCommand:
         assert "docs/authentication.md" in output
         assert "dummy-access-token" not in output
 
-    def test__other_http_status_error__propagates(self, mock_night_logic: mock.AsyncMock, runner: CliRunner) -> None:
+    def test__other_http_status_error__actionable_message__no_traceback(
+        self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner
+    ) -> None:
         mock_night_logic.side_effect = _http_status_error(httpx.codes.INTERNAL_SERVER_ERROR)
 
         result = runner.invoke(app, ["night"])
 
-        assert result.exit_code != 0
-        assert isinstance(result.exception, httpx.HTTPStatusError)
+        assert result.exit_code == 1
+        assert "Traceback" not in result.output
+        output = clean_typer_text(result.stderr)
+        assert "HTTP 500" in output
+        assert "data/" in output
+
+    def test__rate_limited__actionable_message__no_traceback(
+        self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner
+    ) -> None:
+        mock_night_logic.side_effect = ProviderRateLimitError("Rate limit exceeded for /v3/users/sleep/2026-08-15")
+
+        result = runner.invoke(app, ["night"])
+
+        assert result.exit_code == 1
+        assert "Traceback" not in result.output
+        output = clean_typer_text(result.stderr)
+        assert "rate-limited" in output
+        assert "data/" in output
+
+    def test__connection_error__actionable_message__no_traceback(
+        self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner
+    ) -> None:
+        mock_night_logic.side_effect = httpx.ConnectError("Connection refused")
+
+        result = runner.invoke(app, ["night"])
+
+        assert result.exit_code == 1
+        assert "Traceback" not in result.output
+        output = clean_typer_text(result.stderr)
+        assert "Could not reach Polar" in output
+        assert "https://www.polaraccesslink.com" in output
+        assert "--no-refresh" in output
 
 
 @pytest.mark.usefixtures("mock_get_night_store", "mock_get_night_mapper", "mock_get_night_archiver")

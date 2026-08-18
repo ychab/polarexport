@@ -24,8 +24,10 @@ from polarexport.domain.enums import NightSource
 from polarexport.domain.exceptions import ArchiveAlreadyExistsError
 from polarexport.domain.exceptions import InvalidDateRangeError
 from polarexport.domain.exceptions import NoNightDataError
+from polarexport.domain.exceptions import ProviderRateLimitError
 from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.infrastructure.config.settings.app import app_settings
+from polarexport.infrastructure.config.settings.polar import polar_settings
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_archiver
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_mapper
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_store
@@ -131,14 +133,37 @@ def night(
         sync_report, export_report = asyncio.run(
             night_logic(sync_in, export_in, today=today, generated_at=generated_at)
         )
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code != codes.UNAUTHORIZED:
-            raise
+    except ProviderRateLimitError as e:
         typer.secho(
-            "Authentication failed (401 Unauthorized). Check POLAR_ACCESS_TOKEN in .env — see docs/authentication.md.",
+            "Polar rate-limited this request even after retries. Nights already fetched are saved "
+            "in data/ — wait a while and run the command again to pick up where it left off.",
             fg=typer.colors.RED,
             err=True,
         )
+        raise typer.Exit(code=1) from e
+    except httpx.RequestError as e:
+        typer.secho(
+            f"Could not reach Polar at {polar_settings.BASE_URL} ({e.__class__.__name__}). Nights "
+            "already fetched are saved in data/ — use --no-refresh to build the archive offline.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1) from e
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == codes.UNAUTHORIZED:
+            typer.secho(
+                "Authentication failed (401 Unauthorized). Check POLAR_ACCESS_TOKEN in .env — see "
+                "docs/authentication.md.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+        else:
+            typer.secho(
+                f"Polar returned HTTP {e.response.status_code} even after retries. Nights already "
+                "fetched are saved in data/ — try again later.",
+                fg=typer.colors.RED,
+                err=True,
+            )
         raise typer.Exit(code=1) from e
     except NoNightDataError as e:
         message = str(e)

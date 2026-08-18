@@ -9,5 +9,3 @@ CONTINUOUS_HEART_RATE: Final[str] = "/v3/users/continuous-heart-rate/{date}"
 SKIN_TEMPERATURE: Final[str] = "/v3/users/biosensing/skintemperature"
 SLEEPWISE_ALERTNESS: Final[str] = "/v3/users/sleepwise/alertness/date"
 SLEEPWISE_CIRCADIAN_BEDTIME: Final[str] = "/v3/users/sleepwise/circadian-bedtime/date"
-
-API_NAME: Final[str] = "polar-accesslink-v3"

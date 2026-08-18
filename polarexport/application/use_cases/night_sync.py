@@ -2,12 +2,12 @@ import logging
 from datetime import UTC
 from datetime import date
 from datetime import datetime
-from typing import Final
 
 from polarexport.application.inputs.night import NightSyncInput
 from polarexport.application.ports.providers.night import NightProviderPort
 from polarexport.application.ports.stores.night import NightStorePort
 from polarexport.application.ports.stores.night import StoredPayload
+from polarexport.domain.const import API_NAME
 from polarexport.domain.const import POLAR_HISTORY_WINDOW_DAYS
 from polarexport.domain.entities.sync import SourceSyncStat
 from polarexport.domain.entities.sync import SyncReport
@@ -17,8 +17,6 @@ from polarexport.domain.utils.dates import is_outside_history_window
 from polarexport.domain.utils.dates import iterate_dates
 
 logger = logging.getLogger(__name__)
-
-_POLAR_API_NAME: Final[str] = "polar-accesslink-v3"
 
 
 class NightSyncUseCase:
@@ -75,7 +73,7 @@ class NightSyncUseCase:
                     source=source,
                     date=day,
                     fetched_at=datetime.now(UTC),
-                    api=_POLAR_API_NAME,
+                    api=API_NAME,
                     payload=payload,
                 )
             )
