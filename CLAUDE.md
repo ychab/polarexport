@@ -26,8 +26,9 @@ Polar API ──sync──▶ data/ ──export──▶ export/*.zip
         (only what's missing)   (offline, local files only)
 ```
 
-**Scope:** exactly one command, `night`. Sport sessions and other metrics are out of scope — the
-architecture makes them a drop-in later, but do not implement them.
+**Scope:** two commands, `auth` and `night`. `auth` authorizes polarexport against a Polar account and
+writes `.env`; `night` syncs and exports night data. Sport sessions and other metrics are out of
+scope — the architecture makes them a drop-in later, but do not implement them.
 
 ## Architecture: Clean / Hexagonal
 

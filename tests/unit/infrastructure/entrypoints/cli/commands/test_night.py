@@ -17,6 +17,7 @@ from typer.testing import CliRunner
 
 from polarexport.domain.enums import NightSource
 from polarexport.domain.exceptions import ArchiveAlreadyExistsError
+from polarexport.domain.exceptions import MissingCredentialsError
 from polarexport.domain.exceptions import NoNightDataError
 from polarexport.domain.exceptions import ProviderRateLimitError
 from polarexport.infrastructure.entrypoints.cli.commands.night import night_logic
@@ -264,6 +265,19 @@ class TestNightCommand:
         assert result.exit_code == 1
         output = clean_typer_text(result.output)
         assert "Archive already exists" in output
+
+    def test__missing_credentials__actionable_message__no_traceback(
+        self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner
+    ) -> None:
+        mock_night_logic.side_effect = MissingCredentialsError("POLAR_ACCESS_TOKEN is not set.")
+
+        result = runner.invoke(app, ["night"])
+
+        assert result.exit_code == 1
+        assert "Traceback" not in result.output
+        output = clean_typer_text(result.stderr)
+        assert "No Polar credentials found" in output
+        assert "docs/authentication.md" in output
 
     def test__unauthorized__actionable_message__token_not_echoed(
         self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner

@@ -6,6 +6,26 @@ they return is on the order of 15 years.
 
 ---
 
+## The fast path: `polarexport auth`
+
+```bash
+polarexport auth --member-id yannick@example.com
+```
+
+This opens your browser at Polar's authorization page, catches the redirect itself with a one-shot
+local listener, exchanges the code for a token, registers your account with the application, and
+writes `POLAR_ACCESS_TOKEN` / `POLAR_USER_ID` into `.env` — no manual `curl`, no throwaway
+`python3 -m http.server`. It still needs `POLAR_CLIENT_ID`, `POLAR_CLIENT_SECRET` and
+`POLAR_REDIRECT_URI` set first (either via `.env` or `--client-id` / `--client-secret` /
+`--redirect-uri`), since those identify *your application* and are not something the command can
+invent — get them from the Credentials tab at [admin.polaraccesslink.com](https://admin.polaraccesslink.com)
+and register a redirect URI there before running it. On a headless machine, pass `--no-browser` to
+print the authorization URL instead of launching one. See `polarexport auth --help` for the full
+option list.
+
+Everything below this section is the manual fallback — useful for troubleshooting, or if you'd rather
+see every request `polarexport auth` makes on your behalf.
+
 ## What the four values actually are
 
 This trips everyone up, so be precise:
@@ -26,7 +46,7 @@ and it links your account to your application. Without it, every data request re
 
 ---
 
-## Prerequisites
+## Doing it by hand
 
 At [admin.polaraccesslink.com](https://admin.polaraccesslink.com), your client must have a registered
 **redirect URI**. This guide assumes:
@@ -157,9 +177,9 @@ EOF
 
 `.env` is gitignored. Never commit it, and never paste the access token into an issue or a prompt.
 
-polarexport itself only reads `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID`. The client id, secret and
-redirect URI are stored so you can repeat this flow (or so a future `polarexport auth login` command
-can automate it) — they are not used at export time.
+polarexport itself only reads `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID` at export time. The client id,
+secret and redirect URI are stored so you can repeat this flow — by hand, or with `polarexport auth`
+as shown at the top of this document — they are not used at export time.
 
 ## Step 6 — Verify
 

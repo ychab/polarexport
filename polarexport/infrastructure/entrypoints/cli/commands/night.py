@@ -23,6 +23,7 @@ from polarexport.domain.entities.sync import SyncReport
 from polarexport.domain.enums import NightSource
 from polarexport.domain.exceptions import ArchiveAlreadyExistsError
 from polarexport.domain.exceptions import InvalidDateRangeError
+from polarexport.domain.exceptions import MissingCredentialsError
 from polarexport.domain.exceptions import NoNightDataError
 from polarexport.domain.exceptions import ProviderRateLimitError
 from polarexport.domain.value_objects.date_range import DateRange
@@ -133,6 +134,13 @@ def night(
         sync_report, export_report = asyncio.run(
             night_logic(sync_in, export_in, today=today, generated_at=generated_at)
         )
+    except MissingCredentialsError as e:
+        typer.secho(
+            "No Polar credentials found. See docs/authentication.md to set them up.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1) from e
     except ProviderRateLimitError as e:
         typer.secho(
             "Polar rate-limited this request even after retries. Nights already fetched are saved "

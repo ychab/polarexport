@@ -41,6 +41,16 @@ class TestPolarAccessLinkClient:
         retry_controller.sleep = original_sleep
         retry_controller.stop = original_stop
 
+    @pytest.fixture
+    def mock_tenacity_sleep_only(self) -> Iterable[None]:
+        # Leaves the real `stop=` in place so it reads `max_retries` from the client instance.
+        retry_controller = PolarAccessLinkClient._request.retry  # type: ignore[attr-defined]
+        original_sleep = retry_controller.sleep
+
+        retry_controller.sleep = mock.AsyncMock(return_value=None)
+        yield
+        retry_controller.sleep = original_sleep
+
     # -------------------------------------------------------------------------
     # Per-date sources
     # -------------------------------------------------------------------------
@@ -146,6 +156,30 @@ class TestPolarAccessLinkClient:
 
         with pytest.raises(httpx.HTTPStatusError):
             await client.fetch(NightSource.SLEEP, [day])
+
+    async def test__fetch__500__stops_after_the_instance_max_retries(
+        self, httpx_mock: HTTPXMock, mock_tenacity_sleep_only: None
+    ) -> None:
+        # Regression: the stop condition used to read `polar_settings.HTTP_MAX_RETRIES` at
+        # class-definition time, so a per-instance `max_retries` was silently ignored.
+        client = PolarAccessLinkClient(
+            access_token="dummy-access-token",
+            user_id="dummy-user",
+            base_url=HttpUrl("https://api.example.com"),
+            concurrency=1,
+            max_retries=2,
+        )
+        day = date(2026, 8, 15)
+        for _ in range(2):
+            httpx_mock.add_response(
+                url=f"https://api.example.com/v3/users/sleep/{day.isoformat()}",
+                status_code=codes.INTERNAL_SERVER_ERROR,
+            )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.fetch(NightSource.SLEEP, [day])
+
+        assert len(httpx_mock.get_requests()) == 2
 
     async def test__fetch__network_error__retries_then_succeeds(
         self, client: PolarAccessLinkClient, httpx_mock: HTTPXMock, mock_tenacity: None

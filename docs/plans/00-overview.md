@@ -82,7 +82,7 @@ Consequences every phase must respect:
 | Topic | Decision |
 |---|---|
 | API | **Polar AccessLink v3 only** — `https://www.polaraccesslink.com` |
-| Auth | Long-lived token in `.env`. No OAuth code in this build — see `docs/authentication.md`. |
+| Auth | Long-lived token in `.env`, obtained via `polarexport auth` (OAuth flow, phase 13) or by hand — see `docs/authentication.md`. |
 | Local store | **`data/`** — accumulating raw payloads, partitioned by source and date |
 | Archives | **`export/`** — built from `data/`, never directly from the API |
 | Database | **None.** No PostgreSQL, SQLAlchemy, Alembic, FastAPI. Plain files. |

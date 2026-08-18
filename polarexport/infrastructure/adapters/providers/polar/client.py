@@ -11,9 +11,9 @@ from httpx import codes
 
 from pydantic import HttpUrl
 
+from tenacity import RetryCallState
 from tenacity import retry
 from tenacity import retry_if_exception
-from tenacity import stop_after_attempt
 from tenacity import wait_exponential
 
 from polarexport.application.ports.providers.night import NightProviderPort
@@ -25,7 +25,6 @@ from polarexport.infrastructure.adapters.providers.polar import endpoints
 from polarexport.infrastructure.adapters.providers.polar.exceptions import PolarForbiddenError
 from polarexport.infrastructure.adapters.providers.polar.exceptions import PolarNotFoundError
 from polarexport.infrastructure.adapters.providers.polar.exceptions import PolarRateLimitError
-from polarexport.infrastructure.config.settings.polar import polar_settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,13 @@ def _is_retryable_error(exception: BaseException) -> bool:
         return True
 
     return False
+
+
+def _stop_after_max_retries(retry_state: RetryCallState) -> bool:
+    # `stop_after_attempt(polar_settings.HTTP_MAX_RETRIES)` would freeze the limit at class-definition
+    # (import) time. Reading it from the instance here keeps it overridable per client.
+    client = cast("PolarAccessLinkClient", retry_state.args[0])
+    return retry_state.attempt_number >= client._max_retries
 
 
 class PolarAccessLinkClient(HttpClientMixin, NightProviderPort):
@@ -54,12 +60,14 @@ class PolarAccessLinkClient(HttpClientMixin, NightProviderPort):
         base_url: HttpUrl,
         timeout: float = 30.0,
         concurrency: int = 5,
+        max_retries: int = 5,
         verify_ssl: bool = True,
     ) -> None:
         super().__init__(base_url=base_url, timeout=timeout, verify_ssl=verify_ssl)
         self._access_token = access_token
         self._user_id = user_id
         self._concurrency = concurrency
+        self._max_retries = max_retries
 
     async def fetch(self, source: NightSource, dates: Sequence[date]) -> SourceFetchResult:
         match source:
@@ -190,7 +198,7 @@ class PolarAccessLinkClient(HttpClientMixin, NightProviderPort):
     @retry(
         retry=retry_if_exception(_is_retryable_error),
         wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(polar_settings.HTTP_MAX_RETRIES),
+        stop=_stop_after_max_retries,
         reraise=True,
     )
     async def _request(self, endpoint: str, *, params: dict[str, Any] | None = None) -> httpx.Response:

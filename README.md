@@ -55,6 +55,12 @@ This creates the virtualenv, installs all dependency groups and sets up the pre-
 Copy `.env.example` to `.env` and fill it in. Non-secret defaults live in `.envrc` (loaded
 automatically by [direnv](https://direnv.net/)); `.env` holds only secrets and personal overrides.
 
+`POLAR_CLIENT_ID`, `POLAR_CLIENT_SECRET` and `POLAR_REDIRECT_URI` are *inputs to `polarexport auth`*
+(below), not just stored for reference — get them from the Credentials tab at
+[admin.polaraccesslink.com](https://admin.polaraccesslink.com) and register a redirect URI there
+before running it. `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID` are written by that command; you never
+type them in by hand.
+
 ## Authentication
 
 One-time setup. The resulting access token is effectively permanent — Polar's docs state that access
@@ -72,40 +78,15 @@ tokens *"will not expire unless explicitly revoked"*.
 `POLAR_CLIENT_ID` is **not** `POLAR_USER_ID`. `POLAR_CLIENT_SECRET` is **not** `POLAR_ACCESS_TOKEN`.
 Only the bottom two are used at export time.
 
-The short version:
-
 ```bash
-# 1. Authorize in a browser — open the printed URL, log in, accept.
-#    You land on your redirect URI with ?code=... in the address bar.
-python3 - <<'EOF'
-import os, urllib.parse
-print("https://flow.polar.com/oauth2/authorization?" + urllib.parse.urlencode({
-    "response_type": "code",
-    "client_id": os.environ["POLAR_CLIENT_ID"],
-    "redirect_uri": os.environ["POLAR_REDIRECT_URI"],
-    "scope": "accesslink.read_all",
-}))
-EOF
-
-# 2. Exchange the code (valid 10 minutes, single use) for a token.
-curl -sS -X POST 'https://polarremote.com/v2/oauth2/token' \
-  -u "${POLAR_CLIENT_ID}:${POLAR_CLIENT_SECRET}" \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=authorization_code' \
-  -d "code=${CODE}" \
-  -d "redirect_uri=${POLAR_REDIRECT_URI}"
-# → {"access_token": "...", "expires_in": 473039999, "x_user_id": 12345678}
-
-# 3. Register yourself with your application (409 = already done, that's fine).
-curl -sS -X POST 'https://www.polaraccesslink.com/v3/users' \
-  -H "Authorization: Bearer ${POLAR_ACCESS_TOKEN}" \
-  -H 'Content-Type: application/json' \
-  -d '{"member-id": "your-name"}'
+polarexport auth --member-id your-name
 ```
 
-Then put `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID` in `.env`.
+This opens your browser, catches the redirect, exchanges the code, registers your account, and writes
+`POLAR_ACCESS_TOKEN` / `POLAR_USER_ID` into `.env` — no manual `curl`. Pass `--no-browser` on a
+headless machine to print the authorization URL instead.
 
-**Full walkthrough, including the browser step and a troubleshooting table:
+**Full walkthrough, including the manual fallback and a troubleshooting table:
 [`docs/authentication.md`](docs/authentication.md).**
 
 ## Usage
@@ -123,6 +104,23 @@ polarexport --log-level DEBUG --log-handlers console night ...   # verbose, huma
 | `--log-level`, `-l` | `DEBUG` / `INFO` / `WARNING` (default) / `ERROR` / `CRITICAL` |
 | `--log-handlers` | Repeatable. `cli` (plain), `cli_alert` (default, warnings+ only), `console`, `rich`, `null` |
 | `--version`, `-v` | Print the version and exit |
+
+### `auth` — authorize against your Polar account
+
+```bash
+polarexport auth --help
+```
+
+| Option | Description |
+|---|---|
+| `--member-id` | Stable identifier for you within your app. Defaults to your Polar user id. |
+| `--client-id` | Defaults to `POLAR_CLIENT_ID`. |
+| `--client-secret` | Defaults to `POLAR_CLIENT_SECRET`; prompted (hidden) if neither is set. |
+| `--redirect-uri` | Defaults to `POLAR_REDIRECT_URI`. Must match the admin console exactly. |
+| `--env-file` | Where to write credentials. Defaults to `.env` at the project root. |
+| `--no-browser` | Print the authorization URL instead of launching a browser (headless / SSH). |
+| `--timeout` | Seconds to wait for the callback. Defaults to 300, minimum 10. |
+| `--force` | Overwrite credentials already present in the env file. |
 
 ### `night` — export your night data
 

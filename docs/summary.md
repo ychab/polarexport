@@ -175,7 +175,7 @@ Changes:
 make lint and make test both pass clean (100% branch coverage, 275 passed / 5 skipped).
 
 
---- plan 11 --- ??
+--- plan 11 --- ??3
 
 Phase 11 is implemented and both gates are green.
 
@@ -217,3 +217,30 @@ Phase 11 is fully implemented, make lint and make test are both green (279 passe
 4. Use-case integration tests added (per your choice of option A) — new tests/integration/application/use_cases/test_night_sync.py and test_night_export.py with real collaborators (FilesystemNightStore, WireMock-backed client, PolarNightMapper, ZipNightArchiver).
 
 I also renamed the plan file to 11-layering-cleanup-DONE.md and appended a summary entry to docs/summary.md, matching the convention already used for phases 9 and 10. Nothing is committed — let me know if you'd like that done.
+
+
+-- plan 13 --
+
+Phase 13 (`polarexport auth`) is fully implemented, make lint and make test are both green (353 passed, 5 skipped, 100% branch coverage). Summary of what changed:
+
+New layers, following the phase's architecture exactly:
+- domain/entities/auth.py — OAuthTokens (self-redacting `__repr__`, `'***'` in place of the token) and AuthReport (user_id, member_id, newly_registered, env_path — no token field at all).
+- domain/exceptions.py — four new exceptions: AuthorizationTimeoutError, AuthorizationStateMismatchError, AuthorizationDeniedError, CredentialsAlreadyExistError.
+- application/inputs/auth.py — AuthLoginInput (member_id optional, redirect_uri, env_file, force, timeout >= 10).
+- application/ports/providers/auth.py, ports/receivers/callback.py, ports/stores/credentials.py — AuthProviderPort (authorization_url is deliberately sync), AuthCallbackReceiverPort, CredentialsStorePort.
+- application/use_cases/auth_login.py — AuthLoginUseCase.login(): waits for the callback, exchanges the code, registers (defaulting member_id to the Polar user id when not given), writes credentials, returns an AuthReport with no token in it.
+- infrastructure/adapters/providers/polar/auth.py — PolarOAuthClient(HttpClientMixin, AuthProviderPort). Token exchange and registration live on different hosts, so both use full URLs rather than the mixin's single base_url. 409 on registration returns False (not an error); everything else propagates as a raw httpx.HTTPStatusError for the CLI to interpret. Same tenacity retry pattern as PolarAccessLinkClient (5xx/429/network retried, per-instance max_retries read dynamically so it isn't frozen at import time).
+- infrastructure/adapters/receivers/local_http.py — LocalHttpCallbackReceiver, a one-shot asyncio.start_server listener parsed straight off redirect_uri. Always answers the browser with a friendly HTML page first, then resolves/rejects a future based on the first request matching the callback path (ignoring stray paths like favicon.ico). OSError on bind is re-raised with the port number and a hint about a leftover `python3 -m http.server`.
+- infrastructure/adapters/stores/dotenv.py — DotenvCredentialsStore. Preserves every other line (comments, ordering, unrelated keys), atomic write (temp file + Path.replace()), temp file created 0600 from the start via os.fchmod on the fd (not chmod'd after). Refuses to overwrite an existing POLAR_ACCESS_TOKEN unless force=True.
+- infrastructure/config/settings/polar.py — OAUTH_TOKEN_URL / OAUTH_AUTHORIZATION_URL added.
+- infrastructure/entrypoints/cli/dependencies.py — get_polar_oauth_client, get_auth_callback_receiver, get_credentials_store.
+- infrastructure/entrypoints/cli/commands/auth.py — the command. `authorization_url()` is built synchronously in the Typer callback (which is why the port method is sync) so the browser can be opened / the URL printed before `asyncio.run` ever starts — auth_logic itself prints nothing, matching the night command's convention. Missing POLAR_CLIENT_ID or POLAR_REDIRECT_URI is a hard error naming admin.polaraccesslink.com; a missing client secret falls back to a hidden `typer.prompt`. Every failure mode from the phase's error table (denied, state mismatch, timeout, port in use, credentials-already-exist, 401, 403, invalid_grant) gets its own red stderr message and exit code 1; any other HTTP status is left to propagate as an unhandled exception rather than inventing a message the phase didn't specify.
+- main.py — `auth` registered ahead of `night`.
+
+Tests: full unit coverage for every new file (entities, input, use case with AsyncMock ports, adapter via pytest-httpx including the retry/stop-after-max-retries paths, the local HTTP receiver driven by a real ephemeral-port server + httpx client, the dotenv store on tmp_path including the 0600/atomic-write/force-refusal branches, and the three-class CLI pattern). Integration: two WireMock stubs (POST /v2/oauth2/token 200, POST /v3/users 200) plus a dynamically-created 409 mapping for the idempotent-registration test, and a TestAuthLogic class with a fresh-registration happy path and an already-registered (409) happy path, both driving a real LocalHttpCallbackReceiver with a real httpx GET and writing through a real DotenvCredentialsStore on tmp_path.
+
+Docs: docs/authentication.md gained a "The fast path: `polarexport auth`" section at the top (manual six steps demoted to "Doing it by hand", the "future `auth login` command" parenthetical removed since the shipped command is `polarexport auth`); README.md's Configuration section now states the client credentials are auth inputs, Authentication section leads with the one-liner, and Usage gained an `auth` option table ahead of `night`; .env.example comments the token pair as written by `polarexport auth`; CLAUDE.md's Scope section now names both commands; docs/plans/00-overview.md's locked-decisions Auth row no longer says "No OAuth code in this build".
+
+The manual end-to-end check against the real Polar API (mv .env aside, run `polarexport auth`, diff, then `polarexport night`) was not run in this session — it needs a real Polar account and browser interaction that isn't available here. It's still marked as outstanding; whoever has real credentials should run it per the phase's "Manual end-to-end check" section before considering phase 13 fully closed.
+
+I renamed the plan file to 13-auth-command-DONE.md. Nothing is committed — let me know if you'd like that done.

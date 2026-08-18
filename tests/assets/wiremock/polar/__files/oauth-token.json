@@ -1,0 +1,6 @@
+{
+  "access_token": "wiremock-access-token",
+  "token_type": "bearer",
+  "expires_in": 473039999,
+  "x_user_id": 99999999
+}

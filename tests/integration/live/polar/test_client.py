@@ -26,6 +26,9 @@ class TestPolarAccessLinkClientLive:
 
     @pytest.fixture
     async def polar_client_live(self) -> AsyncGenerator[PolarAccessLinkClient]:
+        assert polar_settings.ACCESS_TOKEN is not None, "POLAR_ACCESS_TOKEN must be set in .env for live tests"
+        assert polar_settings.USER_ID is not None, "POLAR_USER_ID must be set in .env for live tests"
+
         async with PolarAccessLinkClient(
             access_token=polar_settings.ACCESS_TOKEN,
             user_id=polar_settings.USER_ID,

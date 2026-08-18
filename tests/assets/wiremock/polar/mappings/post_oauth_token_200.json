@@ -1,0 +1,12 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v2/oauth2/token"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "oauth-token.json",
+    "headers": { "Content-Type": "application/json" }
+  }
+}
