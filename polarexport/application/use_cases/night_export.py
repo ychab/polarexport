@@ -79,6 +79,13 @@ class NightExportUseCase:
             logger.warning(history_window_warning, extra={"date_min": str(night_in.date_range.date_min)})
 
         sources_requested = tuple(source for source in NightSource if source in night_in.sources)
+        mapped_counts: Mapping[NightSource, int] = {
+            NightSource.SLEEP: len(sleeps),
+            NightSource.RECHARGE: len(recharges),
+            NightSource.SKIN_TEMPERATURE: len(skin_temperatures),
+            NightSource.SLEEPWISE: len(sleepwises),
+            NightSource.HEART_RATE: len(heart_rates),
+        }
         manifest = ExportManifest(
             tool_name=__project_name__,
             tool_version=__version__,
@@ -86,14 +93,13 @@ class NightExportUseCase:
             date_range=night_in.date_range,
             sources_requested=sources_requested,
             source_availability={
-                source: SourceAvailability.AVAILABLE
+                source: (SourceAvailability.AVAILABLE if mapped_counts[source] > 0 else SourceAvailability.NO_DATA)
                 if source in night_in.sources
                 else SourceAvailability.NOT_REQUESTED
                 for source in NightSource
             },
             night_count=len(nights),
             gaps=gaps,
-            request_counts={source: 0 for source in sources_requested},
             history_window_warning=history_window_warning,
         )
 

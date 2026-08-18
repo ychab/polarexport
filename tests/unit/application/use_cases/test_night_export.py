@@ -104,6 +104,36 @@ class TestNightExportUseCase:
         assert call_kwargs["include_raw"] == export_in.include_raw
         assert call_kwargs["force"] == export_in.force
 
+    async def test__requested_source_with_no_stored_payloads__reported_no_data(
+        self,
+        use_case: NightExportUseCase,
+        mock_night_store: mock.AsyncMock,
+        mock_night_mapper: mock.Mock,
+        mock_night_archiver: mock.AsyncMock,
+        date_range: DateRange,
+        day: date,
+        today: date,
+        generated_at: datetime,
+        archive_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        stored_by_source = {
+            NightSource.SLEEP: {day: self._stored_payload(NightSource.SLEEP, day, {"raw": "sleep"})},
+        }
+        mock_night_store.read.side_effect = lambda source, _date_range: stored_by_source.get(source, {})
+        mock_night_mapper.to_sleep.return_value = SleepFactory.build(date=day)
+        mock_night_archiver.write.return_value = archive_path
+        export_in = NightExportInputFactory.build(
+            date_range=date_range,
+            sources=frozenset({NightSource.SLEEP, NightSource.RECHARGE}),
+            output_dir=tmp_path,
+        )
+
+        report = await use_case.export(export_in, today=today, generated_at=generated_at)
+
+        assert report.manifest.source_availability[NightSource.SLEEP] == SourceAvailability.AVAILABLE
+        assert report.manifest.source_availability[NightSource.RECHARGE] == SourceAvailability.NO_DATA
+
     async def test__store_empty_for_every_date__raises_no_night_data(
         self,
         use_case: NightExportUseCase,

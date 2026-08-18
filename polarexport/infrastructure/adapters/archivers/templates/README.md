@@ -13,9 +13,10 @@ Requested range: **$DATE_MIN → $DATE_MAX** ($NIGHT_COUNT nights with data).
 
 $SOURCE_AVAILABILITY_TABLE
 
-`available` — data was requested and, where Polar had it, retrieved. `unavailable` — Polar denied
-access to the source (missing user consent). `not_requested` — the source was intentionally
-excluded from this export.
+`available` — data was requested and at least one night of it was found in the local store.
+`unavailable` — Polar denied access to the source (missing user consent). `no_data` — the source
+was requested, consent was fine, but the local store held nothing for it in this range. `not_requested`
+— the source was intentionally excluded from this export.
 
 ## The 28-day retention window
 

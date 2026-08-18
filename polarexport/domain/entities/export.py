@@ -21,7 +21,6 @@ class ExportManifest:
     source_availability: Mapping[NightSource, SourceAvailability]
     night_count: int
     gaps: tuple[date, ...] = field(default_factory=tuple)
-    request_counts: Mapping[NightSource, int]
     history_window_warning: str | None = None
 
 

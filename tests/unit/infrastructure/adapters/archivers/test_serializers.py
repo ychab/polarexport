@@ -160,7 +160,6 @@ class TestSerializeManifest:
         manifest = ExportManifestFactory.build(
             sources_requested=(NightSource.SLEEP,),
             source_availability={NightSource.SLEEP: SourceAvailability.AVAILABLE},
-            request_counts={NightSource.SLEEP: 3},
             gaps=(date(2026, 7, 22),),
         )
 
@@ -168,7 +167,6 @@ class TestSerializeManifest:
 
         assert result["sources_requested"] == ["sleep"]
         assert result["source_availability"] == {"sleep": "available"}
-        assert result["request_counts"] == {"sleep": 3}
         assert result["gaps"] == ["2026-07-22"]
 
 

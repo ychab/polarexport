@@ -20,7 +20,6 @@ class ExportManifestFactory(DataclassFactory[ExportManifest]):
     date_range = Use(DateRangeFactory.build)
     sources_requested = Use(lambda: (NightSource.SLEEP,))
     source_availability = Use(lambda: {NightSource.SLEEP: SourceAvailability.AVAILABLE})
-    request_counts = Use(lambda: {NightSource.SLEEP: 1})
 
 
 class ExportReportFactory(DataclassFactory[ExportReport]):

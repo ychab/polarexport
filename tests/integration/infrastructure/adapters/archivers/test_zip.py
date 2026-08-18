@@ -106,6 +106,42 @@ class TestZipNightArchiverWrite:
         assert manifest_json["gaps"] == ["2026-07-21"]
         assert manifest_json["history_window_warning"] == "date_min is outside the retention window"
 
+    async def test__manifest_and_readme__agree_on_source_availability(self, tmp_path: Path) -> None:
+        date_range = DateRange(date_min=date(2026, 7, 20), date_max=date(2026, 7, 20))
+        night = NightFactory.build(date=date(2026, 7, 20))
+        source_availability = {
+            NightSource.SLEEP: SourceAvailability.AVAILABLE,
+            NightSource.RECHARGE: SourceAvailability.NO_DATA,
+            NightSource.SKIN_TEMPERATURE: SourceAvailability.UNAVAILABLE,
+            NightSource.SLEEPWISE: SourceAvailability.NOT_REQUESTED,
+            NightSource.HEART_RATE: SourceAvailability.NOT_REQUESTED,
+        }
+        manifest = ExportManifestFactory.build(
+            date_range=date_range,
+            night_count=1,
+            gaps=(),
+            source_availability=source_availability,
+            sources_requested=(NightSource.SLEEP, NightSource.RECHARGE, NightSource.SKIN_TEMPERATURE),
+        )
+        archiver = ZipNightArchiver()
+
+        path = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
+
+        with zipfile.ZipFile(path) as zip_file:
+            manifest_json = json.loads(zip_file.read("manifest.json"))
+            readme = zip_file.read("README.md").decode("utf-8")
+
+        assert manifest_json["source_availability"] == {
+            "sleep": "available",
+            "recharge": "no_data",
+            "skin-temperature": "unavailable",
+            "sleepwise": "not_requested",
+            "heart-rate": "not_requested",
+        }
+        for source, availability in source_availability.items():
+            assert f"| `{source.value}` | `{availability.value}` |" in readme
+        assert "no_data" in readme
+
     async def test__readme__mentions_28_day_caveat_and_every_requested_source(self, tmp_path: Path) -> None:
         date_range = DateRange(date_min=date(2026, 7, 20), date_max=date(2026, 7, 20))
         night = NightFactory.build(date=date(2026, 7, 20))

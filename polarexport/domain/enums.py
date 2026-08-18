@@ -68,3 +68,4 @@ class SourceAvailability(StrEnum):
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"  # 403 / consent missing
     NOT_REQUESTED = "not_requested"
+    NO_DATA = "no_data"  # requested, consent fine, but the local store held nothing for the range

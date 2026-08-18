@@ -53,7 +53,6 @@ def _serialize_manifest(manifest: ExportManifest) -> dict[str, Any]:
             source.value: availability.value for source, availability in manifest.source_availability.items()
         },
         "gaps": [day.isoformat() for day in manifest.gaps],
-        "request_counts": {source.value: count for source, count in manifest.request_counts.items()},
         "history_window_warning": manifest.history_window_warning,
     }
 

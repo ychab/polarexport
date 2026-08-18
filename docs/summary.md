@@ -139,3 +139,24 @@ Verified: make lint and make test are both green (269 passed, 100% branch covera
 ✻ Cooked for 17m 20s
 
 ※ recap: Phase 8 (CLI command + docs) for polarexport is done: the `night` command, tests, and README/.claude docs are all in place, with `make lint` and `make test` passing at 100% coverage. Next: awaiting your review or further instructions.
+
+
+--- plan 9 ---
+
+Phase 9 is implemented and both gates are green. Summary of changes:
+
+- domain/enums.py — added SourceAvailability.NO_DATA ("requested, consent fine, but the local store held nothing for the range").
+- domain/entities/export.py — removed the request_counts field from ExportManifest (it's sync provenance, not archive provenance; dropped rather than left null).
+- application/use_cases/night_export.py — source_availability is now measured: for each requested source, AVAILABLE if it produced ≥1 mapped entity across the range, else NO_DATA; unrequested sources still NOT_REQUESTED.
+- archivers/serializers.py — _serialize_manifest no longer emits request_counts.
+- archivers/templates/README.md — documented no_data alongside the other three source_availability values.
+- Tests — updated the factory and serializer test to drop request_counts; added a unit test proving a requested-but-empty source reports NO_DATA while a requested-and-populated one reports AVAILABLE; added an integration test in test_zip.py proving manifest.json and the rendered README.md table agree across all four source_availability values.
+
+No changes were needed in cli/commands/night.py — its export table already renders source_availability generically via .value and never displayed request_counts.
+
+make lint and make test are both green (100% branch coverage, 273 passed / 5 skipped).
+
+I didn't commit — let me know if you'd like that done.
+
+
+--- plan 10 ---
