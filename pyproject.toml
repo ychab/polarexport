@@ -15,11 +15,14 @@ authors = [
   { name = "Yannick Chabbert", email = "yannick.chabbert.it@gmail.com" }
 ]
 
-# Runtime dependencies are declared by the phase that first imports them, so `deptry`
-# stays meaningful instead of being silenced with per-rule ignores:
-#   phase 2 -> pydantic, pydantic-settings, typer, httpx, tenacity
-#   phase 8 -> rich
-dependencies = []
+dependencies = [
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "typer>=0.26.8",
+    "httpx>=0.28.1",
+    "tenacity>=9.1.4",
+    "rich>=15.0.0",
+]
 
 [project.scripts]
 polarexport = "polarexport.infrastructure.entrypoints.cli.main:app"
@@ -46,6 +49,9 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["polarexport"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"polarexport/infrastructure/adapters/archivers/templates/README.md" = "polarexport/infrastructure/adapters/archivers/templates/README.md"
 
 [tool.bumpversion]
 current_version = "0.1.0.dev0"
@@ -80,6 +86,7 @@ select = [
     "FURB", # refurb
 ]
 ignore = [
+    "B008",  # Allow function calls in argument defaults (required for Typer Option)
     "E501",  # Line too long will be formatted by Ruff format
 ]
 
@@ -107,7 +114,7 @@ sections.pydantic = [
 [tool.mypy]
 python_version = "3.13"
 files = ["polarexport", "tests"]
-# plugins = "pydantic.mypy"  <- re-enable in phase 2, together with the pydantic dependency
+plugins = "pydantic.mypy"
 
 [tool.pytest.ini_options]
 junit_family = "legacy"
@@ -145,6 +152,7 @@ source = [
 branch = true
 omit = [
     "*/__pycache__/*",
+    "tests/integration/live/*",
 ]
 
 [tool.coverage.report]

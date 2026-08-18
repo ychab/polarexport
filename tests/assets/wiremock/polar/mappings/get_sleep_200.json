@@ -1,0 +1,12 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/v3/users/sleep/[0-9]{4}-[0-9]{2}-[0-9]{2}"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "sleep.json",
+    "headers": { "Content-Type": "application/json" }
+  }
+}

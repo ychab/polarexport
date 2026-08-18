@@ -110,11 +110,84 @@ Then put `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID` in `.env`.
 
 ## Usage
 
-> Not implemented yet — see `docs/plans/`. The target interface is:
->
-> ```bash
-> polarexport night --date-min 2026-07-20 --date-max 2026-08-16
-> ```
+### Global options
+
+```bash
+polarexport --help
+polarexport --version
+polarexport --log-level DEBUG --log-handlers console night ...   # verbose, human-readable
+```
+
+| Option | Description |
+|---|---|
+| `--log-level`, `-l` | `DEBUG` / `INFO` / `WARNING` (default) / `ERROR` / `CRITICAL` |
+| `--log-handlers` | Repeatable. `cli` (plain), `cli_alert` (default, warnings+ only), `console`, `rich`, `null` |
+| `--version`, `-v` | Print the version and exit |
+
+### `night` — export your night data
+
+```bash
+polarexport night --help
+```
+
+| Option | Description |
+|---|---|
+| `--date-min`, `-f` | First night to export (`YYYY-MM-DD`). Defaults to 27 days ago. |
+| `--date-max`, `-t` | Last night to export (`YYYY-MM-DD`). Defaults to today. |
+| `--source` | Repeatable: `sleep`, `recharge`, `skin-temperature`, `sleepwise`, `heart-rate`, or `all` (default). |
+| `--refresh` / `--no-refresh` | Fetch missing nights from Polar first (default), or build the archive offline from `data/` only. |
+| `--force-refresh` | Re-fetch nights already present in `data/`. Requires `--refresh`. |
+| `--with-raw` / `--no-raw` | Include the untouched Polar payloads under `raw/` in the archive (default: included). |
+| `--output-dir` | Where to write the archive. Defaults to `./export`. |
+| `--force` | Overwrite an existing archive at the target path. |
+| `--limit` | Export at most this many nights, most recent first. |
+
+Worked examples:
+
+```bash
+polarexport night                                        # last 28 days
+polarexport night --date-min 2026-06-01                  # older nights served from data/
+polarexport night --no-refresh --date-min 2026-01-01     # offline, from the local store only
+polarexport night --source sleep --source recharge       # subset of sources
+```
+
+### Keeping history
+
+This is the section that earns the project its keep. Polar AccessLink only retains 28 days of sleep and
+recovery data — run `polarexport night` **on a schedule** and `data/` accumulates nights forever, even
+though Polar's own window never moves. A monthly cron entry is enough to never lose a night again:
+
+```cron
+# Refresh the local store on the 1st of every month at 06:00
+0 6 1 * * cd /path/to/polarexport && uv run polarexport night --output-dir /dev/null >> polarexport.log 2>&1
+```
+
+(Writing the archive to `/dev/null` there is deliberate — the point of a scheduled run is feeding `data/`,
+not producing an archive every time. Point `--output-dir` at a real directory when you actually want one.)
+
+`data/` is the durable asset — back it up. `export/` is disposable — delete it and regenerate any time
+from whatever `data/` holds, with `--no-refresh` if you want that regeneration to touch the network at all.
+
+### The workflow it was built for
+
+Generate an archive, attach the `.zip` to a prompt, and ask an AI agent to review the nights — the
+archive's own `README.md` (generated inside it) is enough context for the agent to interpret `nights.json`
+without you explaining the schema by hand.
+
+```bash
+polarexport night --date-min 2026-08-01 --date-max 2026-08-16
+```
+
+> Attached: `polarexport-nights-2026-08-01_2026-08-16.zip`. Read its `README.md` first, then look at
+> `nights.json`. How has my sleep quality trended over these two weeks, and does anything in the nightly
+> recharge or continuous heart-rate data explain the worst night?
+
+### Limits
+
+This covers a rolling 28-day API window plus whatever history you've already accumulated locally. It
+**cannot retroactively recover nights from before you started running it** — for those, Polar's own
+account export (which can take over a week) is still the only source. Start running `polarexport` now and
+the problem solves itself going forward.
 
 ## Development
 

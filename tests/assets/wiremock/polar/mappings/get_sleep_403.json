@@ -1,0 +1,10 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/v3/users/sleep/2026-01-02"
+  },
+  "response": {
+    "status": 403
+  }
+}

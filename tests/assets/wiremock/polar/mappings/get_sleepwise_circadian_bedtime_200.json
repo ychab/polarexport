@@ -1,0 +1,12 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "GET",
+    "urlPath": "/v3/users/sleepwise/circadian-bedtime/date"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "sleepwise-circadian-bedtime.json",
+    "headers": { "Content-Type": "application/json" }
+  }
+}

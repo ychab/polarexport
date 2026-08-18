@@ -1,0 +1,25 @@
+[
+  {
+    "grade": 9.9,
+    "grade_validity_seconds": 57600,
+    "grade_type": "GRADE_TYPE_PRIMARY",
+    "grade_classification": "GRADE_CLASSIFICATION_STRONG",
+    "validity": "VALIDITY_ESTIMATE",
+    "sleep_inertia": "SLEEP_INERTIA_MILD",
+    "sleep_type": "SLEEP_TYPE_PRIMARY",
+    "result_type": "ALERTNESS_TYPE_HISTORY",
+    "period_start_time": "2022-11-20T20:52:20",
+    "period_end_time": "2022-11-21T19:15:52",
+    "sleep_period_start_time": "2022-11-20T20:52:20.57",
+    "sleep_period_end_time": "2022-11-21T04:11:20.57",
+    "sleep_timezone_offset_minutes": 120,
+    "hourly_data": [
+      {
+        "validity": "VALIDITY_ESTIMATE",
+        "alertness_level": "ALERTNESS_LEVEL_LOW",
+        "start_time": "2022-11-21T04:12:00",
+        "end_time": "2022-11-21T05:00:00"
+      }
+    ]
+  }
+]

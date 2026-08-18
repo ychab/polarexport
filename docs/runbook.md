@@ -59,3 +59,14 @@ Two things to watch
 Phase 5 is the one that can surprise you. It starts by curl-ing your real account and building the data models from what actually comes back — the field names in the plan are from Polar's public docs and unverified. Expect the agent to correct some enum values, and expect one or two sources to return 403 if your watch doesn't support them (skin temperature needs an Elixir-capable device). That's handled, not a failure.
 
 Every phase must end green. If make lint or make test fails and the agent can't fix it in ~3 tries, stop and tell me rather than letting it grind — the plans specify 100% branch coverage, which is a strict gate and occasionally needs a human call about whether a branch is worth keeping.
+
+---
+
+Prompt to new session with sonnet models:
+
+```
+Read docs/plans/00-overview.md, then docs/plans/02-config-infrastructure.md.
+  Implement that phase completely and nothing else.
+  Follow the museflow conventions exactly as the phase file instructs.
+  When finished, run `make lint` and `make test` and make sure both are green.
+```

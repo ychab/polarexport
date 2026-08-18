@@ -1,3 +1,6 @@
+import logging
+from collections.abc import Iterable
+
 import pytest
 
 
@@ -19,6 +22,16 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    skip_live = pytest.mark.skip(reason="need --polar-live option to run")
+    for item in items:
+        if item.get_closest_marker("polar_live") and not config.getoption("--polar-live"):
+            item.add_marker(skip_live)
+        if item.get_closest_marker("wiremock"):
+            item.add_marker(pytest.mark.xdist_group("wiremock-polar"))
+
+
 @pytest.fixture(scope="session", autouse=True)
 def anyio_backend() -> str:
     """
@@ -26,3 +39,12 @@ def anyio_backend() -> str:
     @see https://anyio.readthedocs.io/en/stable/testing.html#using-async-fixtures-with-higher-scopes
     """
     return "asyncio"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def configure_logging() -> Iterable[None]:
+    from polarexport.infrastructure.config.loggers import configure_loggers
+
+    configure_loggers(level="DEBUG", handlers=["null"], propagate=True)
+    yield
+    logging.shutdown()

@@ -1,0 +1,13 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/v3/users/sleepwise/alertness/date",
+    "queryParameters": {
+      "to": { "equalTo": "2026-01-01" }
+    }
+  },
+  "response": {
+    "status": 204
+  }
+}
