@@ -121,6 +121,20 @@ Full explanation and the exact `curl` commands: **`docs/authentication.md`**.
 
 Phases 5, 6 and 7 are mutually independent and may be parallelised or reordered.
 
+### Follow-up phases — from the 2026-08-18 review of the delivered code
+
+Phases 1–8 are complete and green. These came out of reviewing the result; they are independent of
+each other and none is a prerequisite for using the tool.
+
+| # | Phase | Why | Real token? |
+|---|---|---|---|
+| 9 | Manifest fidelity | `manifest.json` reports fabricated `source_availability` and `request_counts` | no |
+| 10 | CLI error handling gaps | rate limits, connection failures and 5xx reach the user as tracebacks | no |
+| 11 | Layering cleanup & test-suite gaps | filesystem I/O in a use case, cross-adapter import, duplicated constant | no |
+
+Phase 9 carries two decisions that must be made before implementing — read its "Decision required"
+sections rather than guessing.
+
 ## Definition of done — every phase
 
 ```bash
