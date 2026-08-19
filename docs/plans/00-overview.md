@@ -173,6 +173,16 @@ store. Phase 17 collects four defects found around that work — one crash, thre
 |---|-------|-----|-------------|
 | 17 | Credentials robustness | a malformed `credentials.json` escapes as a bare `KeyError`, against the port's own contract; `expires_in` is now stored but still unread; the 401 message points at `.env` | no |
 
+### Follow-up phase — from the 2026-08-19 review of phase 17
+
+Phase 17 is complete and green, and its regression test passes. Phase 18 fixes a display bug in
+`config/loggers.py` that has been there since phase 2 but that phases 15 and 17 made visible: `.envrc`
+overrides the handler defaults, so it only appears on a plain checkout without direnv.
+
+| # | Phase | Why | Real token? |
+|---|-------|-----|-------------|
+| 18 | CLI output polish | the default handler pair prints every warning and error twice; warnings go to stdout while errors go to stderr | no |
+
 
 ## Definition of done — every phase
 

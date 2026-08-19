@@ -1,3 +1,4 @@
+import logging
 import logging.config
 from copy import deepcopy
 from typing import Any
@@ -8,9 +9,27 @@ from polarexport.infrastructure.types import LogLevel
 
 LOGGER_POLAREXPORT: Final[str] = "polarexport"
 
+
+class MaxLevelFilter(logging.Filter):
+    """Passes only records strictly below `level`, so a paired handler can own the rest."""
+
+    def __init__(self, level: int) -> None:
+        super().__init__()
+        self._level = level
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno < self._level
+
+
 default_conf: Final[dict[str, Any]] = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "max_level_warning": {
+            "()": MaxLevelFilter,
+            "level": logging.WARNING,
+        },
+    },
     "formatters": {
         "default": {
             "format": "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
@@ -43,7 +62,7 @@ default_conf: Final[dict[str, Any]] = {
             "class": "logging.StreamHandler",
             "level": "WARNING",
             "formatter": "default",
-            "stream": "ext://sys.stdout",
+            "stream": "ext://sys.stderr",
         },
         "rich": {
             "class": "rich.logging.RichHandler",
@@ -92,6 +111,10 @@ def configure_loggers(level: LogLevel, handlers: list[LogHandler], propagate: bo
         propagate: Whether messages should be propagated to ancestor loggers.
     """
     conf = deepcopy(default_conf)
+
+    if "cli" in handlers and "cli_alert" in handlers:
+        # cli_alert owns WARNING and above; cap cli below it so the two don't overlap.
+        conf["handlers"]["cli"]["filters"] = ["max_level_warning"]
 
     # Change level and propagate only for our main logger.
     conf["loggers"][LOGGER_POLAREXPORT]["level"] = level

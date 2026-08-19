@@ -1,9 +1,11 @@
 import logging
+import sys
 from collections.abc import Iterable
 
 import pytest
 
 from polarexport.infrastructure.config.loggers import LOGGER_POLAREXPORT
+from polarexport.infrastructure.config.loggers import MaxLevelFilter
 from polarexport.infrastructure.config.loggers import configure_loggers
 
 _HANDLER_CLASS_NAMES = {
@@ -12,6 +14,29 @@ _HANDLER_CLASS_NAMES = {
     "cli_alert": "StreamHandler",
     "null": "NullHandler",
 }
+
+
+class TestMaxLevelFilter:
+    @pytest.fixture
+    def max_level_filter(self) -> MaxLevelFilter:
+        return MaxLevelFilter(level=logging.WARNING)
+
+    @pytest.mark.parametrize(
+        ("levelno", "expected"),
+        [
+            (logging.INFO, True),
+            (logging.WARNING, False),
+            (logging.ERROR, False),
+        ],
+    )
+    def test__filter__passes_only_records_below_level(
+        self, max_level_filter: MaxLevelFilter, levelno: int, expected: bool
+    ) -> None:
+        record = logging.LogRecord(
+            name="polarexport", level=levelno, pathname=__file__, lineno=1, msg="msg", args=(), exc_info=None
+        )
+
+        assert max_level_filter.filter(record) is expected
 
 
 class TestConfigureLoggers:
@@ -45,6 +70,15 @@ class TestConfigureLoggers:
         assert [type(h).__name__ for h in httpx_logger.handlers] == [_HANDLER_CLASS_NAMES[h] for h in handlers]
 
         assert [type(h).__name__ for h in logging.getLogger().handlers] == [_HANDLER_CLASS_NAMES[h] for h in handlers]
+
+    def test__cli_and_cli_alert_both_requested__cli_filtered_cli_alert_on_stderr(self) -> None:
+        configure_loggers(level="DEBUG", handlers=["cli", "cli_alert"], propagate=False)
+
+        logger = logging.getLogger(LOGGER_POLAREXPORT)
+        cli_handler, cli_alert_handler = logger.handlers
+        assert isinstance(cli_alert_handler, logging.StreamHandler)
+        assert any(isinstance(f, MaxLevelFilter) for f in cli_handler.filters)
+        assert cli_alert_handler.stream is sys.stderr
 
     def test__emits_at_configured_level(self, capsys: pytest.CaptureFixture[str]) -> None:
         # dictConfig() replaces the root logger's handlers wholesale, which would tear down

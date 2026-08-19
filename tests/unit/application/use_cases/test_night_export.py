@@ -186,9 +186,10 @@ class TestNightExportUseCase:
         mock_night_store.read.return_value = {}
         export_in = NightExportInputFactory.build(date_range=date_range, output_dir=tmp_path)
 
-        with pytest.raises(NoNightDataError):
+        with pytest.raises(NoNightDataError) as exc_info:
             await use_case.export(export_in, today=today, generated_at=generated_at)
 
+        assert str(exc_info.value).endswith(".")
         mock_night_archiver.write.assert_not_awaited()
 
     async def test__one_payload_fails_to_map__error_logged_night_still_exported(

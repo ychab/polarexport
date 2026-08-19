@@ -65,7 +65,7 @@ class NightExportUseCase:
             heart_rates=heart_rates,
         )
         if not nights:
-            raise NoNightDataError(f"No night data found for {night_in.date_range}")
+            raise NoNightDataError(f"No night data found for {night_in.date_range}.")
 
         if night_in.limit is not None and len(nights) > night_in.limit:
             # Most recent first, mirroring how the sync use case caps its date list.

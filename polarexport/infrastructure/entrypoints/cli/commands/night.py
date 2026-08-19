@@ -179,7 +179,7 @@ def night(
         else:
             typer.secho(
                 f"Polar returned HTTP {e.response.status_code} even after retries. Nights already "
-                "fetched are saved in data/ — try again later.",
+                "fetched are saved in data/raw/ — try again later.",
                 fg=typer.colors.RED,
                 err=True,
             )

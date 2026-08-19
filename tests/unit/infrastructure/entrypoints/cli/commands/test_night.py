@@ -356,7 +356,7 @@ class TestNightCommand:
         assert "Traceback" not in result.output
         output = clean_typer_text(result.stderr)
         assert "HTTP 500" in output
-        assert "data/" in output
+        assert "data/raw/" in output
 
     def test__rate_limited__actionable_message__no_traceback(
         self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner
