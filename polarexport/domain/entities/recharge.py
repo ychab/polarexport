@@ -14,3 +14,5 @@ class NightlyRecharge:
     heart_rate_variability_avg: int | None = None
     beat_to_beat_avg: int | None = None
     breathing_rate_avg: float | None = None
+    hrv_samples: dict[str, int] | None = None
+    breathing_samples: dict[str, float] | None = None

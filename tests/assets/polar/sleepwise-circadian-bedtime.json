@@ -1,14 +1,14 @@
 [
   {
-    "validity": "VALIDITY_ESTIMATE",
-    "quality": "CIRCADIAN_BEDTIME_QUALITY_COMPROMISED",
+    "validity": "VALIDITY_VALID",
+    "quality": "CIRCADIAN_BEDTIME_QUALITY_CLEARLY_RECOGNIZABLE",
     "result_type": "CIRCADIAN_BEDTIME_TYPE_HISTORY",
-    "period_start_time": "2022-11-20T21:18:30",
-    "period_end_time": "2022-11-21T05:18:30",
-    "preferred_sleep_period_start_time": "2022-11-20T21:18:30",
-    "preferred_sleep_period_end_time": "2022-11-21T05:18:30",
-    "sleep_gate_start_time": "2022-11-20T21:03:30",
-    "sleep_gate_end_time": "2022-11-20T21:33:30",
-    "sleep_timezone_offset_minutes": 120
+    "period_start_time": "2026-08-05T21:15:00",
+    "period_end_time": "2026-08-06T05:15:00",
+    "preferred_sleep_period_start_time": "2026-08-05T21:15:00",
+    "preferred_sleep_period_end_time": "2026-08-06T05:15:00",
+    "sleep_gate_start_time": "2026-08-05T21:00:00",
+    "sleep_gate_end_time": "2026-08-05T21:30:00",
+    "sleep_timezone_offset_minutes": 0
   }
 ]

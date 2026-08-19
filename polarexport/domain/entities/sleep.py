@@ -3,6 +3,7 @@ from datetime import date
 from datetime import datetime
 
 from polarexport.domain.enums import ContinuityClass
+from polarexport.domain.types import HeartRateByTime
 from polarexport.domain.types import Hypnogram
 from polarexport.domain.value_objects.sleep_stages import SleepStages
 
@@ -27,6 +28,7 @@ class Sleep:
     group_solidity_score: float | None = None
     group_regeneration_score: float | None = None
     hypnogram: Hypnogram | None = None
+    heart_rate_samples: HeartRateByTime | None = None
     device_id: str | None = None
 
     def __post_init__(self) -> None:

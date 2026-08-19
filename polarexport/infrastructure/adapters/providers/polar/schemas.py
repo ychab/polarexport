@@ -33,6 +33,7 @@ class SleepDTO(BaseModel):
     group_solidity_score: float | None = None
     group_regeneration_score: float | None = None
     hypnogram: dict[str, int] | None = None
+    heart_rate_samples: dict[str, int] | None = None
 
 
 class NightlyRechargeDTO(BaseModel):
@@ -67,9 +68,10 @@ class ContinuousHeartRateDTO(BaseModel):
 
 
 class SkinTemperatureDTO(BaseModel):
-    """`GET /v3/users/biosensing/skintemperature` — unverified, no Elixir-capable device on hand.
+    """`GET /v3/users/biosensing/skintemperature` — verified against a live capture on 2026-08-18.
 
-    Built from the official swagger.yaml (polar.com/accesslink-api/swagger.yaml), not a live capture.
+    AccessLink returns one nightly aggregate per date; it has no per-sample skin-temperature endpoint
+    (the account export's 5-minute series is not reachable via the API).
     """
 
     model_config = ConfigDict(extra="allow")
@@ -89,10 +91,7 @@ class AlertnessHourlyDataDTO(BaseModel):
 
 
 class AlertnessDTO(BaseModel):
-    """`GET /v3/users/sleepwise/alertness/date` — unverified, account has no SleepWise data.
-
-    Built from the official swagger.yaml (polar.com/accesslink-api/swagger.yaml), not a live capture.
-    """
+    """`GET /v3/users/sleepwise/alertness/date` — verified against a live capture on 2026-08-18."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -113,10 +112,7 @@ class AlertnessDTO(BaseModel):
 
 
 class CircadianBedtimeDTO(BaseModel):
-    """`GET /v3/users/sleepwise/circadian-bedtime/date` — unverified, account has no SleepWise data.
-
-    Built from the official swagger.yaml (polar.com/accesslink-api/swagger.yaml), not a live capture.
-    """
+    """`GET /v3/users/sleepwise/circadian-bedtime/date` — verified against a live capture on 2026-08-18."""
 
     model_config = ConfigDict(extra="allow")
 

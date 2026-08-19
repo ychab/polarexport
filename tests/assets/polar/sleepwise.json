@@ -1,0 +1,44 @@
+{
+  "date": "2026-08-05",
+  "alertness": {
+    "grade": 7.4,
+    "grade_validity_seconds": 57600,
+    "grade_type": "GRADE_TYPE_PRIMARY",
+    "grade_classification": "GRADE_CLASSIFICATION_FAIR",
+    "validity": "VALIDITY_VALID",
+    "sleep_inertia": "SLEEP_INERTIA_MILD",
+    "sleep_type": "SLEEP_TYPE_PRIMARY",
+    "result_type": "ALERTNESS_TYPE_HISTORY",
+    "period_start_time": "2026-08-05T21:53:18",
+    "period_end_time": "2026-08-06T22:05:37",
+    "sleep_period_start_time": "2026-08-05T21:53:18.763",
+    "sleep_period_end_time": "2026-08-06T04:15:18.763",
+    "sleep_timezone_offset_minutes": 120,
+    "hourly_data": [
+      {
+        "validity": "VALIDITY_VALID",
+        "alertness_level": "ALERTNESS_LEVEL_LOW",
+        "start_time": "2026-08-06T04:16:00",
+        "end_time": "2026-08-06T05:00:00"
+      },
+      {
+        "validity": "VALIDITY_VALID",
+        "alertness_level": "ALERTNESS_LEVEL_HIGH",
+        "start_time": "2026-08-06T06:00:00",
+        "end_time": "2026-08-06T07:00:00"
+      }
+    ]
+  },
+  "circadian_bedtime": {
+    "validity": "VALIDITY_VALID",
+    "quality": "CIRCADIAN_BEDTIME_QUALITY_CLEARLY_RECOGNIZABLE",
+    "result_type": "CIRCADIAN_BEDTIME_TYPE_HISTORY",
+    "period_start_time": "2026-08-05T21:15:00",
+    "period_end_time": "2026-08-06T05:15:00",
+    "preferred_sleep_period_start_time": "2026-08-05T21:15:00",
+    "preferred_sleep_period_end_time": "2026-08-06T05:15:00",
+    "sleep_gate_start_time": "2026-08-05T21:00:00",
+    "sleep_gate_end_time": "2026-08-05T21:30:00",
+    "sleep_timezone_offset_minutes": 0
+  }
+}

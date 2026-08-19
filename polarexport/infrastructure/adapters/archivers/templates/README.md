@@ -54,6 +54,7 @@ not normalise them to UTC, the local offset is meaningful sleep context.
 | `sleep_cycles` | count | Number of sleep cycles detected |
 | `group_duration_score` / `group_solidity_score` / `group_regeneration_score` | 0–100, higher is better | Sub-scores that combine into `sleep_score` |
 | `hypnogram` | `"HH:MM"` (device-local time) → stage code | One observation per hypnogram entry; see "Hypnogram stage codes" below |
+| `heart_rate_samples` | `"HH:MM"` (device-local time) → bpm | Polar's own heart rate series for the sleep window, aligned to the hypnogram timestamps above. **Not** the same series as `heart_rate` below — see "`sleep.heart_rate_samples` vs `heart_rate`" |
 | `device_id` | string | Identifier of the device that captured the night |
 
 ### `recharge` (Nightly Recharge)
@@ -67,28 +68,55 @@ not normalise them to UTC, the local offset is meaningful sleep context.
 | `heart_rate_variability_avg` | ms | Average heart rate variability during the night |
 | `beat_to_beat_avg` | ms | Average beat-to-beat interval |
 | `breathing_rate_avg` | breaths/min | Average breathing rate during the night |
+| `hrv_samples` | `"HH:MM"` (device-local time) → ms | Heart rate variability sample series across the night |
+| `breathing_samples` | `"HH:MM"` (device-local time) → breaths/min | Breathing rate sample series across the night |
 
 ### `skin_temperature`
 
 | Field | Unit | Meaning |
 |---|---|---|
-| `sleep_start` / `sleep_end` | ISO-8601 datetime, local offset | Sleep period the temperature samples belong to |
-| `samples[].time` / `samples[].deviation` | ISO-8601 datetime / °C | Per-sample deviation from the user's baseline skin temperature |
-| `deviation` | °C | Deviation from baseline for the whole night |
+| `celsius` | °C | Measured distal skin temperature during sleep |
+| `deviation` | °C | Signed departure from *this user's own* rolling baseline; can be negative |
+
+Both numbers matter and neither derives the other: `celsius` is useful for correlating with room
+temperature, `deviation` is useful for spotting illness or cycle signal. AccessLink returns one
+nightly aggregate — the account export's 5-minute sample series is not reachable via the API (see
+`docs/api-vs-account-export.md`).
 
 ### `sleepwise`
 
 | Field | Unit | Meaning |
 |---|---|---|
-| `alertness_hourly[].hour` / `alertness_hourly[].alertness_level` | hour of day (0–23) / label | Predicted alertness level for that hour |
+| `alertness_hourly[].start_time` / `.end_time` | ISO-8601 datetime, local offset | The hour this prediction covers |
+| `alertness_hourly[].alertness_level` | label | Predicted alertness level for that hour |
+| `alertness_hourly[].validity` | label | Confidence of this hour's prediction |
 | `sleep_time` / `wake_time` | ISO-8601 datetime, local offset | Predicted sleep and wake times |
 | `bedtime_window_start` / `bedtime_window_end` | ISO-8601 datetime, local offset | Polar's recommended bedtime window |
+| `grade` | float | Overall alertness grade |
+| `grade_type` / `grade_classification` | label | How the grade was derived, and its qualitative bucket |
+| `grade_validity_seconds` | seconds | How long the grade remains valid |
+| `validity` | label | Confidence of the alertness result as a whole |
+| `sleep_inertia` | label | Predicted grogginess on waking |
+| `sleep_type` | label | Which sleep period this result covers (e.g. primary sleep vs a nap) |
+| `result_type` | label | Whether this is a historical result or a live prediction |
+| `period_start_time` / `period_end_time` | ISO-8601 datetime, local offset | The full period the alertness result covers |
+| `sleep_timezone_offset_minutes` | minutes | Timezone offset Polar used when computing this result |
+| `circadian_validity` / `circadian_quality` | label | Confidence and quality of the circadian bedtime result |
+| `preferred_sleep_period_start_time` / `preferred_sleep_period_end_time` | ISO-8601 datetime, local offset | Polar's circadian-model preferred sleep window, distinct from `bedtime_window_start` / `_end` |
 
 ### `heart_rate` (continuous heart rate)
 
 | Field | Unit | Meaning |
 |---|---|---|
 | `samples[].time` / `samples[].heart_rate` | ISO-8601 datetime / bpm | Heart rate sample; clipped to the sleep window when sleep data is present for the same night |
+
+### `sleep.heart_rate_samples` vs `heart_rate`
+
+These are two different series and should not be double-counted. `heart_rate` (continuous heart
+rate) is a 5-minute-spaced series for the whole day, clipped to the sleep window by this tool.
+`sleep.heart_rate_samples` is Polar's own series returned by the sleep endpoint, aligned to the
+hypnogram's transition timestamps instead of a fixed interval. Keep both, but treat them as two
+readings of the same night, not two nights' worth of data.
 
 ## Scales
 
@@ -108,6 +136,29 @@ $HYPNOGRAM_TABLE
 
 `null` means the device or Polar did not report that field for the night — it is not the same as a
 measured value of `0`. Do not treat a `null` field as zero in any analysis.
+
+## What is not in here
+
+Polar's own account export (requested from flow.polar.com, not this tool) carries more than
+AccessLink exposes. The gap is structural, not a bug in this export:
+
+- **History beyond 28 days.** See "The 28-day retention window" above.
+- **Baselines** — sleep-score and Nightly Recharge baselines Polar computes from months of history
+  (`sleepScoreBaseline`, `meanBaselineRmssd`, and similar). Without them an absolute reading like
+  "83 ms RMSSD" cannot be judged as good or bad *for this person*.
+- **Full sleep-score breakdown** — AccessLink gives 3 of roughly 10 sub-scores.
+  `continuityScore`, `efficiencyScore`, `remScore`, `n3Score` and others are account-export only.
+- **Interruption counts** — AccessLink gives interruption *duration* only, not how many interruptions
+  made it up.
+- **Sleep efficiency, span and type** — derivable from `sleep_start_time` / `sleep_end_time` and the
+  stage totals in `nights.json`, but not provided as a field.
+- **Hypnogram and skin-temperature resolution** — AccessLink is minute-keyed (hypnogram) or a single
+  nightly aggregate (skin temperature); the account export samples both far more finely.
+- **Per-cycle sleep detail** — AccessLink gives a cycle *count* only.
+- **PPI / beat-to-beat raw samples** — no AccessLink endpoint exists for these at all.
+
+Full detail, including exact field names: `docs/api-vs-account-export.md` in the polarexport
+repository.
 
 ## `raw/`
 

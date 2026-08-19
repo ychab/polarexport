@@ -11,6 +11,7 @@ from polarexport.domain.entities.sleep import Sleep
 from polarexport.domain.entities.sleepwise import SleepWise
 from polarexport.domain.enums import ContinuityClass
 from polarexport.domain.enums import NightlyRechargeStatus
+from polarexport.domain.value_objects.alertness_hour import AlertnessHour
 from polarexport.domain.value_objects.sleep_stages import SleepStages
 from polarexport.infrastructure.adapters.providers.polar.schemas import AlertnessDTO
 from polarexport.infrastructure.adapters.providers.polar.schemas import CircadianBedtimeDTO
@@ -77,6 +78,7 @@ def _sleep_dto_to_entity(dto: SleepDTO) -> Sleep:
         group_solidity_score=dto.group_solidity_score,
         group_regeneration_score=dto.group_regeneration_score,
         hypnogram=dto.hypnogram,
+        heart_rate_samples=dto.heart_rate_samples,
         device_id=dto.device_id,
     )
 
@@ -93,12 +95,15 @@ def _nightly_recharge_dto_to_entity(dto: NightlyRechargeDTO) -> NightlyRecharge:
         heart_rate_variability_avg=dto.heart_rate_variability_avg,
         beat_to_beat_avg=dto.beat_to_beat_avg,
         breathing_rate_avg=dto.breathing_rate_avg,
+        hrv_samples=dto.hrv_samples,
+        breathing_samples=dto.breathing_samples,
     )
 
 
 def _skin_temperature_dto_to_entity(dto: SkinTemperatureDTO) -> SkinTemperature:
     return SkinTemperature(
         date=dto.sleep_date,
+        celsius=dto.sleep_time_skin_temperature_celsius,
         deviation=dto.deviation_from_baseline_celsius,
     )
 
@@ -108,11 +113,13 @@ def _sleepwise_dto_to_entity(
     alertness: AlertnessDTO | None,
     circadian: CircadianBedtimeDTO | None,
 ) -> SleepWise:
-    # The domain SleepWise entity predates a live SleepWise payload (this account has no supported
-    # device) and models an hourly (hour, label) view rather than Polar's richer hourly_data objects.
-    # Best-effort projection until the entity is revisited with real data.
     alertness_hourly = tuple(
-        (hour.start_time.hour, hour.alertness_level)
+        AlertnessHour(
+            start_time=hour.start_time,
+            end_time=hour.end_time,
+            alertness_level=hour.alertness_level,
+            validity=hour.validity,
+        )
         for hour in (alertness.hourly_data if alertness else [])
         if hour.alertness_level is not None
     )
@@ -124,6 +131,21 @@ def _sleepwise_dto_to_entity(
         wake_time=alertness.sleep_period_end_time if alertness else None,
         bedtime_window_start=circadian.sleep_gate_start_time if circadian else None,
         bedtime_window_end=circadian.sleep_gate_end_time if circadian else None,
+        grade=alertness.grade if alertness else None,
+        grade_type=alertness.grade_type if alertness else None,
+        grade_classification=alertness.grade_classification if alertness else None,
+        grade_validity_seconds=alertness.grade_validity_seconds if alertness else None,
+        validity=alertness.validity if alertness else None,
+        sleep_inertia=alertness.sleep_inertia if alertness else None,
+        sleep_type=alertness.sleep_type if alertness else None,
+        result_type=alertness.result_type if alertness else None,
+        period_start_time=alertness.period_start_time if alertness else None,
+        period_end_time=alertness.period_end_time if alertness else None,
+        sleep_timezone_offset_minutes=alertness.sleep_timezone_offset_minutes if alertness else None,
+        circadian_validity=circadian.validity if circadian else None,
+        circadian_quality=circadian.quality if circadian else None,
+        preferred_sleep_period_start_time=circadian.preferred_sleep_period_start_time if circadian else None,
+        preferred_sleep_period_end_time=circadian.preferred_sleep_period_end_time if circadian else None,
     )
 
 

@@ -7,6 +7,7 @@ from polarexport.domain.enums import ContinuityClass
 from polarexport.domain.enums import NightlyRechargeStatus
 from polarexport.domain.enums import NightSource
 from polarexport.domain.enums import SourceAvailability
+from polarexport.domain.value_objects.alertness_hour import AlertnessHour
 from polarexport.domain.value_objects.sleep_stages import SleepStages
 from polarexport.infrastructure.adapters.archivers.serializers import _iso
 from polarexport.infrastructure.adapters.archivers.serializers import _render_continuity_class_table
@@ -15,6 +16,7 @@ from polarexport.infrastructure.adapters.archivers.serializers import _render_hy
 from polarexport.infrastructure.adapters.archivers.serializers import _render_nightly_recharge_status_table
 from polarexport.infrastructure.adapters.archivers.serializers import _render_readme
 from polarexport.infrastructure.adapters.archivers.serializers import _render_source_availability_table
+from polarexport.infrastructure.adapters.archivers.serializers import _serialize_alertness_hour
 from polarexport.infrastructure.adapters.archivers.serializers import _serialize_heart_rate
 from polarexport.infrastructure.adapters.archivers.serializers import _serialize_manifest
 from polarexport.infrastructure.adapters.archivers.serializers import _serialize_night
@@ -97,12 +99,26 @@ class TestSerializeSkinTemperature:
     def test__none__returns_none(self) -> None:
         assert _serialize_skin_temperature(None) is None
 
-    def test__with_samples__serializes_samples(self) -> None:
-        sample = (datetime(2026, 7, 20, 23, 0, tzinfo=UTC), 0.3)
-        skin_temperature = SkinTemperatureFactory.build(date=date(2026, 7, 20), samples=(sample,))
+    def test__with_values__serializes_celsius_and_deviation(self) -> None:
+        skin_temperature = SkinTemperatureFactory.build(date=date(2026, 7, 20), celsius=33.8, deviation=-0.5)
         result = _serialize_skin_temperature(skin_temperature)
-        assert result is not None
-        assert result["samples"] == [{"time": sample[0].isoformat(), "deviation": 0.3}]
+        assert result == {"celsius": 33.8, "deviation": -0.5}
+
+
+class TestSerializeAlertnessHour:
+    def test__serializes_all_fields(self) -> None:
+        hour = AlertnessHour(
+            start_time=datetime(2026, 7, 20, 23, 0, tzinfo=UTC),
+            end_time=datetime(2026, 7, 21, 0, 0, tzinfo=UTC),
+            alertness_level="ALERTNESS_LEVEL_HIGH",
+            validity="VALIDITY_VALID",
+        )
+        assert _serialize_alertness_hour(hour) == {
+            "start_time": hour.start_time.isoformat(),
+            "end_time": hour.end_time.isoformat() if hour.end_time is not None else None,
+            "alertness_level": "ALERTNESS_LEVEL_HIGH",
+            "validity": "VALIDITY_VALID",
+        }
 
 
 class TestSerializeSleepwise:
@@ -110,10 +126,15 @@ class TestSerializeSleepwise:
         assert _serialize_sleepwise(None) is None
 
     def test__with_alertness_hourly__serializes_entries(self) -> None:
-        sleepwise = SleepWiseFactory.build(date=date(2026, 7, 20), alertness_hourly=((23, "high"),))
+        hour = AlertnessHour(
+            start_time=datetime(2026, 7, 20, 23, 0, tzinfo=UTC),
+            alertness_level="ALERTNESS_LEVEL_HIGH",
+        )
+        sleepwise = SleepWiseFactory.build(date=date(2026, 7, 20), alertness_hourly=(hour,), grade=7.4)
         result = _serialize_sleepwise(sleepwise)
         assert result is not None
-        assert result["alertness_hourly"] == [{"hour": 23, "alertness_level": "high"}]
+        assert result["alertness_hourly"] == [_serialize_alertness_hour(hour)]
+        assert result["grade"] == 7.4
 
 
 class TestSerializeHeartRate:

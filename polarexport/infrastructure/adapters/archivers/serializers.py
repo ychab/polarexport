@@ -18,6 +18,7 @@ from polarexport.domain.enums import NightlyRechargeStatus
 from polarexport.domain.enums import NightSource
 from polarexport.domain.enums import SleepStage
 from polarexport.domain.enums import SourceAvailability
+from polarexport.domain.value_objects.alertness_hour import AlertnessHour
 from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.domain.value_objects.sleep_stages import SleepStages
 
@@ -89,6 +90,7 @@ def _serialize_sleep(sleep: Sleep | None) -> dict[str, Any] | None:
         "group_solidity_score": sleep.group_solidity_score,
         "group_regeneration_score": sleep.group_regeneration_score,
         "hypnogram": sleep.hypnogram,
+        "heart_rate_samples": sleep.heart_rate_samples,
         "device_id": sleep.device_id,
     }
 
@@ -106,6 +108,8 @@ def _serialize_recharge(recharge: NightlyRecharge | None) -> dict[str, Any] | No
         "heart_rate_variability_avg": recharge.heart_rate_variability_avg,
         "beat_to_beat_avg": recharge.beat_to_beat_avg,
         "breathing_rate_avg": recharge.breathing_rate_avg,
+        "hrv_samples": recharge.hrv_samples,
+        "breathing_samples": recharge.breathing_samples,
     }
 
 
@@ -113,10 +117,17 @@ def _serialize_skin_temperature(skin_temperature: SkinTemperature | None) -> dic
     if skin_temperature is None:
         return None
     return {
-        "sleep_start": _iso(skin_temperature.sleep_start),
-        "sleep_end": _iso(skin_temperature.sleep_end),
-        "samples": [{"time": _iso(time), "deviation": deviation} for time, deviation in skin_temperature.samples],
+        "celsius": skin_temperature.celsius,
         "deviation": skin_temperature.deviation,
+    }
+
+
+def _serialize_alertness_hour(hour: AlertnessHour) -> dict[str, Any]:
+    return {
+        "start_time": _iso(hour.start_time),
+        "end_time": _iso(hour.end_time),
+        "alertness_level": hour.alertness_level,
+        "validity": hour.validity,
     }
 
 
@@ -124,13 +135,26 @@ def _serialize_sleepwise(sleepwise: SleepWise | None) -> dict[str, Any] | None:
     if sleepwise is None:
         return None
     return {
-        "alertness_hourly": [
-            {"hour": hour, "alertness_level": alertness_level} for hour, alertness_level in sleepwise.alertness_hourly
-        ],
+        "alertness_hourly": [_serialize_alertness_hour(hour) for hour in sleepwise.alertness_hourly],
         "sleep_time": _iso(sleepwise.sleep_time),
         "wake_time": _iso(sleepwise.wake_time),
         "bedtime_window_start": _iso(sleepwise.bedtime_window_start),
         "bedtime_window_end": _iso(sleepwise.bedtime_window_end),
+        "grade": sleepwise.grade,
+        "grade_type": sleepwise.grade_type,
+        "grade_classification": sleepwise.grade_classification,
+        "grade_validity_seconds": sleepwise.grade_validity_seconds,
+        "validity": sleepwise.validity,
+        "sleep_inertia": sleepwise.sleep_inertia,
+        "sleep_type": sleepwise.sleep_type,
+        "result_type": sleepwise.result_type,
+        "period_start_time": _iso(sleepwise.period_start_time),
+        "period_end_time": _iso(sleepwise.period_end_time),
+        "sleep_timezone_offset_minutes": sleepwise.sleep_timezone_offset_minutes,
+        "circadian_validity": sleepwise.circadian_validity,
+        "circadian_quality": sleepwise.circadian_quality,
+        "preferred_sleep_period_start_time": _iso(sleepwise.preferred_sleep_period_start_time),
+        "preferred_sleep_period_end_time": _iso(sleepwise.preferred_sleep_period_end_time),
     }
 
 
