@@ -136,7 +136,8 @@ def night(
         )
     except MissingCredentialsError as e:
         typer.secho(
-            "No Polar credentials found. See docs/authentication.md to set them up.",
+            "No Polar credentials found. Run `polarexport auth` to set them up, or see "
+            "docs/authentication.md to do it by hand.",
             fg=typer.colors.RED,
             err=True,
         )

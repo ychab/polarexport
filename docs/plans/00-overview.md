@@ -149,6 +149,20 @@ currently cannot start without the credentials that `polarexport auth` is meant 
 Phase 14 carries a decision that must be made before implementing. Phases 12 and 14 are small and
 independent; 13 is the large one.
 
+### Follow-up phases — from the 2026-08-19 review of phases 12-14
+
+Phases 12-14 are complete and green. These two came out of that review plus an audit of the full
+Polar account export (`polar-user-data-export.zip`, 4 881 files) against what `night` produces.
+**Do 15 before 16** — 15 moves `data/`, and running them in the other order only creates conflicts.
+
+| # | Phase | Why | Real token? |
+|---|---|---|---|
+| 15 | Credentials & storage layout | `auth` writes the bearer token into `.env`, the file the user hand-authors; `expires_in` is parsed and discarded | at the end |
+| 16 | Night data fidelity | four things the API returns never reach `nights.json`; three dead fields ship as `null` in every night | yes |
+
+Both decisions for phase 15 (credentials inside the data root; a single `data/` root) were made by
+the user on 2026-08-19 and are recorded in the plan — do not re-open them.
+
 ## Definition of done — every phase
 
 ```bash

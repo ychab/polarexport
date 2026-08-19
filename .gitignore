@@ -22,3 +22,6 @@ junit.xml
 /export
 
 .aider*
+
+# Polar account export downloaded from flow.polar.com (hundreds of MB)
+/polar-user-data-export*.zip
