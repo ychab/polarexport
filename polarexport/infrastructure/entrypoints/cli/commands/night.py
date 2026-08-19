@@ -97,7 +97,7 @@ def night(
         True, "--with-raw/--no-raw", help="Include the untouched Polar payloads under raw/."
     ),
     output_dir: Path | None = typer.Option(
-        None, "--output-dir", help="Where to write the archive. Defaults to ./export."
+        None, "--output-dir", help="Where to write the archive. Defaults to data/export."
     ),
     force: bool = typer.Option(False, "--force", help="Overwrite an existing archive."),
     # cap
@@ -110,7 +110,7 @@ def night(
     today = date.today()
     resolved_date_min = date_min if date_min is not None else today - timedelta(days=POLAR_HISTORY_WINDOW_DAYS - 1)
     resolved_date_max = date_max if date_max is not None else today
-    resolved_output_dir = output_dir if output_dir is not None else app_settings.EXPORT_DIR
+    resolved_output_dir = output_dir if output_dir is not None else app_settings.RESOLVED_EXPORT_DIR
     resolved_sources = frozenset(NightSource(value) for value in source)
     generated_at = datetime.now(UTC)
 

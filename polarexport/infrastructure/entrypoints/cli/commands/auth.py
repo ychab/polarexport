@@ -2,6 +2,8 @@ import asyncio
 import logging
 import secrets
 import webbrowser
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -9,15 +11,16 @@ from httpx import codes
 
 import typer
 
-from polarexport import BASE_DIR
 from polarexport.application.inputs.auth import AuthLoginInput
 from polarexport.application.use_cases.auth_login import AuthLoginUseCase
+from polarexport.domain.const import CREDENTIALS_FILENAME
 from polarexport.domain.entities.auth import AuthReport
 from polarexport.domain.exceptions import AuthorizationDeniedError
 from polarexport.domain.exceptions import AuthorizationStateMismatchError
 from polarexport.domain.exceptions import AuthorizationTimeoutError
 from polarexport.domain.exceptions import CredentialsAlreadyExistError
 from polarexport.infrastructure.adapters.providers.polar.auth import PolarOAuthClient
+from polarexport.infrastructure.config.settings.app import app_settings
 from polarexport.infrastructure.config.settings.polar import polar_settings
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_auth_callback_receiver
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_credentials_store
@@ -26,14 +29,16 @@ from polarexport.infrastructure.entrypoints.cli.dependencies import get_polar_oa
 logger = logging.getLogger(__name__)
 
 
-async def auth_logic(auth_in: AuthLoginInput, *, client: PolarOAuthClient, state: str) -> AuthReport:
+async def auth_logic(
+    auth_in: AuthLoginInput, *, client: PolarOAuthClient, state: str, obtained_at: datetime
+) -> AuthReport:
     async with client:
         use_case = AuthLoginUseCase(
             auth_provider=client,
             auth_callback_receiver=get_auth_callback_receiver(auth_in.redirect_uri),
             credentials_store=get_credentials_store(),
         )
-        return await use_case.login(auth_in, state=state)
+        return await use_case.login(auth_in, state=state, obtained_at=obtained_at)
 
 
 def _is_invalid_grant(e: httpx.HTTPStatusError) -> bool:
@@ -57,7 +62,9 @@ def auth(
         None, "--redirect-uri", help="Default: POLAR_REDIRECT_URI. Must match the admin console exactly."
     ),
     # processing config
-    env_file: Path | None = typer.Option(None, "--env-file", help="Default: BASE_DIR / '.env'."),
+    credentials_file: Path | None = typer.Option(
+        None, "--credentials-file", help="Default: data/auth/credentials.json."
+    ),
     no_browser: bool = typer.Option(
         False, "--no-browser", help="Print the URL instead of launching a browser (headless / SSH)."
     ),
@@ -65,7 +72,7 @@ def auth(
         300.0, "--timeout", min=10.0, help="Seconds to wait for the callback. Default 300, min 10."
     ),
     # force
-    force: bool = typer.Option(False, "--force", help="Overwrite credentials already present in the env file."),
+    force: bool = typer.Option(False, "--force", help="Overwrite credentials already present at --credentials-file."),
 ) -> None:
     """Authorize polarexport against your Polar account."""
     resolved_client_id = client_id if client_id is not None else polar_settings.CLIENT_ID
@@ -96,7 +103,9 @@ def auth(
         )
         raise typer.Exit(code=1)
 
-    resolved_env_file = env_file if env_file is not None else BASE_DIR / ".env"
+    resolved_credentials_file = (
+        credentials_file if credentials_file is not None else app_settings.AUTH_DIR / CREDENTIALS_FILENAME
+    )
 
     state = secrets.token_urlsafe(32)
     client = get_polar_oauth_client(client_id=resolved_client_id, client_secret=resolved_client_secret)
@@ -111,13 +120,14 @@ def auth(
     auth_in = AuthLoginInput(
         member_id=member_id,
         redirect_uri=resolved_redirect_uri,
-        env_file=resolved_env_file,
+        credentials_file=resolved_credentials_file,
         force=force,
         timeout=timeout,
     )
+    obtained_at = datetime.now(UTC)
 
     try:
-        report = asyncio.run(auth_logic(auth_in, client=client, state=state))
+        report = asyncio.run(auth_logic(auth_in, client=client, state=state, obtained_at=obtained_at))
     except AuthorizationDeniedError as e:
         typer.secho(str(e), fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from e
@@ -163,5 +173,5 @@ def auth(
 
     typer.secho(f"Authorized as Polar user {report.user_id} ✅", fg=typer.colors.GREEN)
     typer.secho(f"Registered with your application (member-id: {report.member_id})", fg=typer.colors.GREEN)
-    typer.secho(f"Credentials written to {report.env_path}", fg=typer.colors.GREEN)
+    typer.secho(f"Credentials written to {report.credentials_path}", fg=typer.colors.GREEN)
     typer.secho("Next: polarexport night", fg=typer.colors.GREEN)

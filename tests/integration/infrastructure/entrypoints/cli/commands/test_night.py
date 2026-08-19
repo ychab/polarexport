@@ -1,3 +1,4 @@
+import logging
 import os
 import zipfile
 from collections.abc import AsyncIterator
@@ -17,6 +18,7 @@ from polarexport.domain.enums import NightSource
 from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.infrastructure.adapters.providers.polar.client import PolarAccessLinkClient
 from polarexport.infrastructure.adapters.stores.filesystem import FilesystemNightStore
+from polarexport.infrastructure.adapters.stores.json_credentials import JsonCredentialsStore
 from polarexport.infrastructure.entrypoints.cli.commands import night as night_module
 from polarexport.infrastructure.entrypoints.cli.commands.night import night_logic
 
@@ -116,3 +118,35 @@ class TestNightLogic:
         assert sync_report is not None
         assert all(stat.fetched == 0 for stat in sync_report.stats.values())
         assert export_report.archive_path.exists()
+
+    async def test__access_token_never_appears_in_archive_or_logs__with_credentials_file_present(
+        self,
+        date_range: DateRange,
+        today: date,
+        generated_at: datetime,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        dummy_token = "dummy-credentials-file-token-must-never-leak"
+        credentials_path = tmp_path / "data" / "auth" / "credentials.json"
+        await JsonCredentialsStore().write(
+            access_token=dummy_token,
+            user_id="dummy-user",
+            obtained_at=generated_at,
+            expires_in=473040000,
+            path=credentials_path,
+            force=False,
+        )
+
+        sync_in = NightSyncInput(date_range=date_range, sources=frozenset(NightSource))
+        export_in = NightExportInput(date_range=date_range, sources=frozenset(NightSource), output_dir=tmp_path)
+
+        with caplog.at_level(logging.DEBUG):
+            _, export_report = await night_logic(sync_in, export_in, today=today, generated_at=generated_at)
+
+        assert export_report.archive_path.exists()
+        with zipfile.ZipFile(export_report.archive_path) as archive:
+            for name in archive.namelist():
+                assert dummy_token not in archive.read(name).decode("utf-8")
+        assert dummy_token not in caplog.text
+        assert credentials_path.is_file()

@@ -14,7 +14,7 @@ polarexport auth --member-id yannick@example.com
 
 This opens your browser at Polar's authorization page, catches the redirect itself with a one-shot
 local listener, exchanges the code for a token, registers your account with the application, and
-writes `POLAR_ACCESS_TOKEN` / `POLAR_USER_ID` into `.env` — no manual `curl`, no throwaway
+writes the access token and user id to `data/auth/credentials.json` — no manual `curl`, no throwaway
 `python3 -m http.server`. It still needs `POLAR_CLIENT_ID`, `POLAR_CLIENT_SECRET` and
 `POLAR_REDIRECT_URI` set first (either via `.env` or `--client-id` / `--client-secret` /
 `--redirect-uri`), since those identify *your application* and are not something the command can
@@ -23,8 +23,14 @@ and register a redirect URI there before running it. On a headless machine, pass
 print the authorization URL instead of launching one. See `polarexport auth --help` for the full
 option list.
 
+`data/auth/credentials.json` is state the tool produces, not configuration you author — it's a
+different kind of file from `.env`, and that's why it lives outside it. `.env` holds only the client
+credentials above and log config.
+
 Everything below this section is the manual fallback — useful for troubleshooting, or if you'd rather
-see every request `polarexport auth` makes on your behalf.
+see every request `polarexport auth` makes on your behalf. It also covers overriding the token pair
+by hand via `POLAR_ACCESS_TOKEN` / `POLAR_USER_ID` in `.env`, which — if set — takes priority over
+`data/auth/credentials.json`.
 
 ## What the four values actually are
 
@@ -163,7 +169,12 @@ curl -sS -X POST 'https://www.polaraccesslink.com/v3/users' \
 - `409 Conflict` — already registered. Harmless, carry on.
 - `403 Forbidden` — missing consents. Review them at [account.polar.com](https://account.polar.com).
 
-## Step 5 — Write `.env`
+## Step 5 — Write `.env` (manual override, not the norm)
+
+`polarexport auth` writes the token pair to `data/auth/credentials.json`, not `.env` — that file is
+state the tool produces, not configuration you author. This step is only for the manual `curl` flow
+above, or for forcing a specific token pair without touching the credentials file (`POLAR_ACCESS_TOKEN`
+/ `POLAR_USER_ID` in `.env`, if set, take priority over `data/auth/credentials.json`):
 
 ```bash
 cat >> .env <<EOF
@@ -177,9 +188,10 @@ EOF
 
 `.env` is gitignored. Never commit it, and never paste the access token into an issue or a prompt.
 
-polarexport itself only reads `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID` at export time. The client id,
-secret and redirect URI are stored so you can repeat this flow — by hand, or with `polarexport auth`
-as shown at the top of this document — they are not used at export time.
+polarexport itself only reads `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID` at export time — from `.env`
+if set there, otherwise from `data/auth/credentials.json`. The client id, secret and redirect URI are
+stored so you can repeat this flow — by hand, or with `polarexport auth` as shown at the top of this
+document — they are not used at export time.
 
 ## Step 6 — Verify
 

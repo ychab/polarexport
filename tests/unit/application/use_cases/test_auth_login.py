@@ -1,3 +1,5 @@
+from datetime import UTC
+from datetime import datetime
 from unittest import mock
 
 import pytest
@@ -12,6 +14,10 @@ from tests.unit.factories.inputs.auth import AuthLoginInputFactory
 
 
 class TestAuthLoginUseCase:
+    @pytest.fixture
+    def obtained_at(self) -> datetime:
+        return datetime(2026, 8, 18, 16, 42, 5, tzinfo=UTC)
+
     @pytest.fixture
     def use_case(
         self,
@@ -31,15 +37,16 @@ class TestAuthLoginUseCase:
         mock_auth_provider: mock.Mock,
         mock_auth_callback_receiver: mock.AsyncMock,
         mock_credentials_store: mock.AsyncMock,
+        obtained_at: datetime,
     ) -> None:
         mock_auth_callback_receiver.wait_for_code.return_value = "auth-code"
         mock_auth_provider.exchange_code.return_value = OAuthTokensFactory.build(
-            access_token="tok-must-never-be-logged", user_id="12345678"
+            access_token="tok-must-never-be-logged", user_id="12345678", expires_in=473040000
         )
         mock_auth_provider.register_user.return_value = True
         auth_in = AuthLoginInputFactory.build(member_id="yannick", timeout=42.0)
 
-        report = await use_case.login(auth_in, state="expected-state")
+        report = await use_case.login(auth_in, state="expected-state", obtained_at=obtained_at)
 
         mock_auth_callback_receiver.wait_for_code.assert_awaited_once_with(
             expected_state="expected-state", timeout=42.0
@@ -49,7 +56,12 @@ class TestAuthLoginUseCase:
             access_token="tok-must-never-be-logged", member_id="yannick"
         )
         mock_credentials_store.write.assert_awaited_once_with(
-            access_token="tok-must-never-be-logged", user_id="12345678", env_path=auth_in.env_file, force=auth_in.force
+            access_token="tok-must-never-be-logged",
+            user_id="12345678",
+            obtained_at=obtained_at,
+            expires_in=473040000,
+            path=auth_in.credentials_file,
+            force=auth_in.force,
         )
         assert report.user_id == "12345678"
         assert report.member_id == "yannick"
@@ -61,13 +73,14 @@ class TestAuthLoginUseCase:
         use_case: AuthLoginUseCase,
         mock_auth_provider: mock.Mock,
         mock_auth_callback_receiver: mock.AsyncMock,
+        obtained_at: datetime,
     ) -> None:
         mock_auth_callback_receiver.wait_for_code.return_value = "auth-code"
         mock_auth_provider.exchange_code.return_value = OAuthTokensFactory.build(user_id="12345678")
         mock_auth_provider.register_user.return_value = True
         auth_in = AuthLoginInputFactory.build(member_id=None)
 
-        report = await use_case.login(auth_in, state="expected-state")
+        report = await use_case.login(auth_in, state="expected-state", obtained_at=obtained_at)
 
         mock_auth_provider.register_user.assert_awaited_once_with(access_token=mock.ANY, member_id="12345678")
         assert report.member_id == "12345678"
@@ -78,13 +91,14 @@ class TestAuthLoginUseCase:
         mock_auth_provider: mock.Mock,
         mock_auth_callback_receiver: mock.AsyncMock,
         mock_credentials_store: mock.AsyncMock,
+        obtained_at: datetime,
     ) -> None:
         mock_auth_callback_receiver.wait_for_code.return_value = "auth-code"
         mock_auth_provider.exchange_code.return_value = OAuthTokensFactory.build(user_id="12345678")
         mock_auth_provider.register_user.return_value = False
         auth_in = AuthLoginInputFactory.build()
 
-        report = await use_case.login(auth_in, state="expected-state")
+        report = await use_case.login(auth_in, state="expected-state", obtained_at=obtained_at)
 
         assert report.newly_registered is False
         mock_credentials_store.write.assert_awaited_once()
@@ -95,13 +109,14 @@ class TestAuthLoginUseCase:
         mock_auth_provider: mock.Mock,
         mock_auth_callback_receiver: mock.AsyncMock,
         mock_credentials_store: mock.AsyncMock,
+        obtained_at: datetime,
     ) -> None:
         mock_auth_callback_receiver.wait_for_code.return_value = "auth-code"
         mock_auth_provider.exchange_code.return_value = OAuthTokensFactory.build(user_id="12345678")
         mock_auth_provider.register_user.return_value = True
         auth_in = AuthLoginInputFactory.build(force=True)
 
-        await use_case.login(auth_in, state="expected-state")
+        await use_case.login(auth_in, state="expected-state", obtained_at=obtained_at)
 
         assert mock_credentials_store.write.call_args.kwargs["force"] is True
 
@@ -110,29 +125,30 @@ class TestAuthLoginUseCase:
         use_case: AuthLoginUseCase,
         mock_auth_provider: mock.Mock,
         mock_auth_callback_receiver: mock.AsyncMock,
+        obtained_at: datetime,
     ) -> None:
         mock_auth_callback_receiver.wait_for_code.side_effect = AuthorizationStateMismatchError("mismatch")
         auth_in = AuthLoginInputFactory.build()
 
         with pytest.raises(AuthorizationStateMismatchError):
-            await use_case.login(auth_in, state="expected-state")
+            await use_case.login(auth_in, state="expected-state", obtained_at=obtained_at)
 
         mock_auth_provider.exchange_code.assert_not_awaited()
 
     async def test__timeout__propagates(
-        self, use_case: AuthLoginUseCase, mock_auth_callback_receiver: mock.AsyncMock
+        self, use_case: AuthLoginUseCase, mock_auth_callback_receiver: mock.AsyncMock, obtained_at: datetime
     ) -> None:
         mock_auth_callback_receiver.wait_for_code.side_effect = AuthorizationTimeoutError("timed out")
         auth_in = AuthLoginInputFactory.build()
 
         with pytest.raises(AuthorizationTimeoutError):
-            await use_case.login(auth_in, state="expected-state")
+            await use_case.login(auth_in, state="expected-state", obtained_at=obtained_at)
 
     async def test__denied__propagates(
-        self, use_case: AuthLoginUseCase, mock_auth_callback_receiver: mock.AsyncMock
+        self, use_case: AuthLoginUseCase, mock_auth_callback_receiver: mock.AsyncMock, obtained_at: datetime
     ) -> None:
         mock_auth_callback_receiver.wait_for_code.side_effect = AuthorizationDeniedError("declined")
         auth_in = AuthLoginInputFactory.build()
 
         with pytest.raises(AuthorizationDeniedError):
-            await use_case.login(auth_in, state="expected-state")
+            await use_case.login(auth_in, state="expected-state", obtained_at=obtained_at)

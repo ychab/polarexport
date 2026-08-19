@@ -1,6 +1,9 @@
 import asyncio
+import json
 import os
 import socket
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -60,18 +63,25 @@ def auth_in(redirect_port: int, tmp_path: Path) -> AuthLoginInput:
     return AuthLoginInput(
         member_id="integration-member",
         redirect_uri=f"http://127.0.0.1:{redirect_port}/callback",
-        env_file=tmp_path / ".env",
+        credentials_file=tmp_path / "data" / "auth" / "credentials.json",
         force=False,
         timeout=10.0,
     )
 
 
+@pytest.fixture
+def obtained_at() -> datetime:
+    return datetime(2026, 8, 18, 16, 42, 5, tzinfo=UTC)
+
+
 @pytest.mark.wiremock
 class TestAuthLogic:
     async def test__happy_path__fresh_registration__credentials_written(
-        self, oauth_client: PolarOAuthClient, auth_in: AuthLoginInput, redirect_port: int
+        self, oauth_client: PolarOAuthClient, auth_in: AuthLoginInput, redirect_port: int, obtained_at: datetime
     ) -> None:
-        task = asyncio.create_task(auth_logic(auth_in, client=oauth_client, state="expected-state"))
+        task = asyncio.create_task(
+            auth_logic(auth_in, client=oauth_client, state="expected-state", obtained_at=obtained_at)
+        )
         await _wait_until_listening(redirect_port)
 
         async with httpx.AsyncClient() as http_client:
@@ -84,20 +94,24 @@ class TestAuthLogic:
 
         assert report.member_id == "integration-member"
         assert report.newly_registered is True
-        content = auth_in.env_file.read_text(encoding="utf-8")
-        assert "POLAR_ACCESS_TOKEN=wiremock-access-token" in content
-        assert f"POLAR_USER_ID={report.user_id}" in content
+        envelope = json.loads(auth_in.credentials_file.read_text(encoding="utf-8"))
+        assert envelope["access_token"] == "wiremock-access-token"
+        assert envelope["user_id"] == report.user_id
+        assert envelope["obtained_at"] == obtained_at.isoformat()
 
     async def test__already_registered__409_treated_as_success(
         self,
         oauth_client: PolarOAuthClient,
         auth_in: AuthLoginInput,
         redirect_port: int,
+        obtained_at: datetime,
         polar_wiremock: WireMockContext,
     ) -> None:
         polar_wiremock.create_mapping(method="POST", url_path="/v3/users", status=409)
 
-        task = asyncio.create_task(auth_logic(auth_in, client=oauth_client, state="expected-state"))
+        task = asyncio.create_task(
+            auth_logic(auth_in, client=oauth_client, state="expected-state", obtained_at=obtained_at)
+        )
         await _wait_until_listening(redirect_port)
 
         async with httpx.AsyncClient() as http_client:
@@ -106,4 +120,4 @@ class TestAuthLogic:
         report = await task
 
         assert report.newly_registered is False
-        assert auth_in.env_file.is_file()
+        assert auth_in.credentials_file.is_file()

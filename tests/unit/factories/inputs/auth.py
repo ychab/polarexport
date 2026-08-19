@@ -11,6 +11,6 @@ class AuthLoginInputFactory(ModelFactory[AuthLoginInput]):
 
     member_id = None
     redirect_uri = "http://localhost:8000/auth/polar/callback"
-    env_file = Use(lambda: Path(".env"))
+    credentials_file = Use(lambda: Path("data/auth/credentials.json"))
     force = False
     timeout = 300.0

@@ -19,10 +19,10 @@
 ## What this tool does
 
 Fetches night data from the Polar AccessLink API, accumulates raw payloads in a local `data/` store,
-and builds shareable `.zip` archives in `export/`.
+and builds shareable `.zip` archives in `data/export/`.
 
 ```
-Polar API ──sync──▶ data/ ──export──▶ export/*.zip
+Polar API ──sync──▶ data/raw/ ──export──▶ data/export/*.zip
         (only what's missing)   (offline, local files only)
 ```
 
@@ -117,12 +117,17 @@ class NightExportUseCase:
   happens at export time.
 
 ### Local store
-- `data/` holds **raw payloads only**, never mapped entities. Mapping happens at export time so a
+- `data/` is the single root: `raw/` (accumulating payloads), `export/` (generated archives), `auth/`
+  (credentials — see below).
+- `data/raw/` holds **raw payloads only**, never mapped entities. Mapping happens at export time so a
   mapper fix can be applied retroactively to nights already on disk.
-- Layout: `data/<api>/<source>/<YYYY>/<MM>/<YYYY-MM-DD>.json` with a provenance envelope
+- Layout: `data/raw/<api>/<source>/<YYYY>/<MM>/<YYYY-MM-DD>.json` with a provenance envelope
   (`fetched_at`, `api`, `source`, `date`, `schema_version`, `payload`).
 - `payload: null` records "Polar was asked and had nothing" — that is what stops endless re-fetching.
 - All writes are atomic (temp file in the same directory + `Path.replace()`).
+- `data/auth/credentials.json` holds the bearer token and its provenance (`obtained_at`,
+  `expires_in`) — state the tool produces, not configuration the user authors. `.env` holds only
+  `POLAR_CLIENT_ID` / `POLAR_CLIENT_SECRET` / `POLAR_REDIRECT_URI` and log config.
 
 ### CLI Entrypoints
 - Each Typer command is a thin sync wrapper that calls `asyncio.run()` on a co-located async function.
@@ -140,7 +145,8 @@ class NightExportUseCase:
 - `403` on a source → consent missing. Mark the source unavailable and continue with the others.
 - `429` / `5xx` / network → retried by `HttpClientMixin`'s tenacity policy.
 - **Never log the access token**, never put it in an exception message, and never write it into
-  `data/`, an archive, or a manifest.
+  `data/raw/`, an archive, or a manifest. The one file that may hold it is `data/auth/credentials.json`,
+  mode 0600.
 
 ## Naming Conventions
 | Suffix | Meaning | Type |

@@ -17,4 +17,4 @@ class AuthReport:
     user_id: str
     member_id: str
     newly_registered: bool
-    env_path: Path
+    credentials_path: Path

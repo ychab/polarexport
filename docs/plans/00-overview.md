@@ -83,8 +83,9 @@ Consequences every phase must respect:
 |---|---|
 | API | **Polar AccessLink v3 only** — `https://www.polaraccesslink.com` |
 | Auth | Long-lived token in `.env`, obtained via `polarexport auth` (OAuth flow, phase 13) or by hand — see `docs/authentication.md`. |
-| Local store | **`data/`** — accumulating raw payloads, partitioned by source and date |
-| Archives | **`export/`** — built from `data/`, never directly from the API |
+| Local store | **`data/`** — the single root: `raw/` (accumulating payloads, partitioned by source and date), `export/` (archives), `auth/` (credentials) |
+| Archives | **`data/export/`** — built from `data/raw/`, never directly from the API |
+| Persistence | **`data/auth/credentials.json`** — the bearer token and its provenance, mode 0600. Not `.env`. |
 | Database | **None.** No PostgreSQL, SQLAlchemy, Alembic, FastAPI. Plain files. |
 | Test doubles | **WireMock** for integration (mirroring museflow) + `pytest-httpx` for unit status branches |
 | Sources | sleep, nightly-recharge, skin-temperature, sleep-wise, continuous-heart-rate — all five |

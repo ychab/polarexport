@@ -1,4 +1,6 @@
 from collections.abc import Iterable
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 from typing import Final
 from unittest import mock
@@ -79,7 +81,9 @@ class TestAuthCommand:
         target_path = "polarexport.infrastructure.entrypoints.cli.commands.auth.auth_logic"
         with mock.patch(target_path, new_callable=mock.AsyncMock) as patched:
             patched.return_value = AuthReportFactory.build(
-                user_id="12345678", member_id="yannick", env_path=Path("/home/user/polarexport/.env")
+                user_id="12345678",
+                member_id="yannick",
+                credentials_path=Path("/home/user/polarexport/data/auth/credentials.json"),
             )
             yield patched
 
@@ -107,7 +111,7 @@ class TestAuthCommand:
         output = clean_typer_text(result.output)
         assert "Authorized as Polar user 12345678" in output
         assert "Registered with your application (member-id: yannick)" in output
-        assert "Credentials written to /home/user/polarexport/.env" in output
+        assert "Credentials written to /home/user/polarexport/data/auth/credentials.json" in output
         assert "Next: polarexport night" in output
 
     def test__default__opens_browser(
@@ -144,16 +148,16 @@ class TestAuthCommand:
         auth_in = mock_auth_logic.call_args.args[0]
         assert auth_in.force is True
 
-    def test__env_file__passed_through(
+    def test__credentials_file__passed_through(
         self, mock_auth_logic: mock.AsyncMock, runner: CliRunner, tmp_path: Path
     ) -> None:
-        env_file = tmp_path / "custom.env"
+        credentials_file = tmp_path / "custom-credentials.json"
 
-        result = runner.invoke(app, ["auth", "--env-file", str(env_file)])
+        result = runner.invoke(app, ["auth", "--credentials-file", str(credentials_file)])
 
         assert result.exit_code == 0
         auth_in = mock_auth_logic.call_args.args[0]
-        assert auth_in.env_file == env_file
+        assert auth_in.credentials_file == credentials_file
 
     def test__client_id_option__overrides_settings(
         self, mock_get_polar_oauth_client: mock.Mock, runner: CliRunner
@@ -358,11 +362,12 @@ class TestAuthLogic:
         self, mock_auth_login_use_case: mock.Mock, client: PolarOAuthClient
     ) -> None:
         auth_in = AuthLoginInputFactory.build()
+        obtained_at = datetime(2026, 8, 18, 16, 42, 5, tzinfo=UTC)
 
-        report = await auth_logic(auth_in, client=client, state="expected-state")
+        report = await auth_logic(auth_in, client=client, state="expected-state", obtained_at=obtained_at)
 
         use_case_instance = mock_auth_login_use_case.return_value
-        use_case_instance.login.assert_awaited_once_with(auth_in, state="expected-state")
+        use_case_instance.login.assert_awaited_once_with(auth_in, state="expected-state", obtained_at=obtained_at)
         assert report is use_case_instance.login.return_value
         mock_auth_login_use_case.assert_called_once_with(
             auth_provider=client, auth_callback_receiver=mock.ANY, credentials_store=mock.ANY

@@ -18,17 +18,30 @@ class TestAppSettings:
         assert settings.LOG_LEVEL_CLI == "WARNING"
         assert settings.LOG_HANDLERS_CLI == ["cli", "cli_alert"]
         assert settings.DATA_DIR == BASE_DIR / "data"
-        assert settings.EXPORT_DIR == BASE_DIR / "export"
+        assert settings.EXPORT_DIR is None
+        assert settings.RAW_DIR == BASE_DIR / "data" / "raw"
+        assert settings.AUTH_DIR == BASE_DIR / "data" / "auth"
+        assert settings.RESOLVED_EXPORT_DIR == BASE_DIR / "data" / "export"
         assert settings.EXPORT_CONCURRENCY == 5
 
-    def test__data_and_export_dir_are_relocatable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test__data_dir_is_relocatable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("POLAREXPORT_DATA_DIR", "/mnt/backup/polar")
+
+        settings = AppSettings(_env_file=None)
+
+        assert settings.DATA_DIR == Path("/mnt/backup/polar")
+        assert settings.RAW_DIR == Path("/mnt/backup/polar/raw")
+        assert settings.AUTH_DIR == Path("/mnt/backup/polar/auth")
+        assert settings.RESOLVED_EXPORT_DIR == Path("/mnt/backup/polar/export")
+
+    def test__export_dir_override__wins_over_data_dir(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("POLAREXPORT_DATA_DIR", "/mnt/backup/polar")
         monkeypatch.setenv("POLAREXPORT_EXPORT_DIR", "/mnt/backup/polar-archives")
 
         settings = AppSettings(_env_file=None)
 
-        assert settings.DATA_DIR == Path("/mnt/backup/polar")
         assert settings.EXPORT_DIR == Path("/mnt/backup/polar-archives")
+        assert settings.RESOLVED_EXPORT_DIR == Path("/mnt/backup/polar-archives")
 
     @pytest.mark.parametrize("value", [0, 21])
     def test__export_concurrency_out_of_range(self, monkeypatch: pytest.MonkeyPatch, value: int) -> None:

@@ -14,4 +14,4 @@ class OAuthTokensFactory(DataclassFactory[OAuthTokens]):
 class AuthReportFactory(DataclassFactory[AuthReport]):
     __model__ = AuthReport
 
-    env_path = Use(lambda: Path(".env"))
+    credentials_path = Use(lambda: Path("data/auth/credentials.json"))

@@ -18,7 +18,7 @@ and hands you an archive in seconds.
 ## How it works
 
 ```
-Polar API ──sync──▶ data/ ──export──▶ export/*.zip
+Polar API ──sync──▶ data/raw/ ──export──▶ data/export/*.zip
         (only what's missing)   (offline, local files only)
 ```
 
@@ -34,7 +34,7 @@ month and your archive grows forever.
 > For those, Polar's own account export is still the only source. Start running it now and the problem
 > solves itself going forward.
 
-`data/` is the durable asset and worth backing up. `export/` is disposable — regenerate it any time.
+`data/` is the durable asset and worth backing up. `data/export/` is disposable — regenerate it any time.
 
 ## Requirements
 
@@ -58,8 +58,8 @@ automatically by [direnv](https://direnv.net/)); `.env` holds only secrets and p
 `POLAR_CLIENT_ID`, `POLAR_CLIENT_SECRET` and `POLAR_REDIRECT_URI` are *inputs to `polarexport auth`*
 (below), not just stored for reference — get them from the Credentials tab at
 [admin.polaraccesslink.com](https://admin.polaraccesslink.com) and register a redirect URI there
-before running it. `POLAR_ACCESS_TOKEN` and `POLAR_USER_ID` are written by that command; you never
-type them in by hand.
+before running it. The access token and user id are written by that command into
+`data/auth/credentials.json`, not `.env` — you never type them in by hand.
 
 ## Authentication
 
@@ -83,8 +83,8 @@ polarexport auth --member-id your-name
 ```
 
 This opens your browser, catches the redirect, exchanges the code, registers your account, and writes
-`POLAR_ACCESS_TOKEN` / `POLAR_USER_ID` into `.env` — no manual `curl`. Pass `--no-browser` on a
-headless machine to print the authorization URL instead.
+the access token and user id to `data/auth/credentials.json` — no manual `curl`. Pass `--no-browser`
+on a headless machine to print the authorization URL instead.
 
 **Full walkthrough, including the manual fallback and a troubleshooting table:
 [`docs/authentication.md`](docs/authentication.md).**
@@ -117,10 +117,10 @@ polarexport auth --help
 | `--client-id` | Defaults to `POLAR_CLIENT_ID`. |
 | `--client-secret` | Defaults to `POLAR_CLIENT_SECRET`; prompted (hidden) if neither is set. |
 | `--redirect-uri` | Defaults to `POLAR_REDIRECT_URI`. Must match the admin console exactly. |
-| `--env-file` | Where to write credentials. Defaults to `.env` at the project root. |
+| `--credentials-file` | Where to write credentials. Defaults to `data/auth/credentials.json`. |
 | `--no-browser` | Print the authorization URL instead of launching a browser (headless / SSH). |
 | `--timeout` | Seconds to wait for the callback. Defaults to 300, minimum 10. |
-| `--force` | Overwrite credentials already present in the env file. |
+| `--force` | Overwrite credentials already present at `--credentials-file`. |
 
 ### `night` — export your night data
 
@@ -136,7 +136,7 @@ polarexport night --help
 | `--refresh` / `--no-refresh` | Fetch missing nights from Polar first (default), or build the archive offline from `data/` only. |
 | `--force-refresh` | Re-fetch nights already present in `data/`. Requires `--refresh`. |
 | `--with-raw` / `--no-raw` | Include the untouched Polar payloads under `raw/` in the archive (default: included). |
-| `--output-dir` | Where to write the archive. Defaults to `./export`. |
+| `--output-dir` | Where to write the archive. Defaults to `data/export`. |
 | `--force` | Overwrite an existing archive at the target path. |
 | `--limit` | Export at most this many nights, most recent first. |
 
@@ -163,7 +163,7 @@ though Polar's own window never moves. A monthly cron entry is enough to never l
 (Writing the archive to `/dev/null` there is deliberate — the point of a scheduled run is feeding `data/`,
 not producing an archive every time. Point `--output-dir` at a real directory when you actually want one.)
 
-`data/` is the durable asset — back it up. `export/` is disposable — delete it and regenerate any time
+`data/` is the durable asset — back it up. `data/export/` is disposable — delete it and regenerate any time
 from whatever `data/` holds, with `--no-refresh` if you want that regeneration to touch the network at all.
 
 ### The workflow it was built for

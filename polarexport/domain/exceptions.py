@@ -25,4 +25,4 @@ class AuthorizationStateMismatchError(PolarExportError): ...  # callback state d
 class AuthorizationDeniedError(PolarExportError): ...  # user declined consent on Polar's authorization screen
 
 
-class CredentialsAlreadyExistError(PolarExportError): ...  # env file already has a token; rerun with --force
+class CredentialsAlreadyExistError(PolarExportError): ...  # credentials file already has a token; rerun with --force

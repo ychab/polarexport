@@ -10,6 +10,6 @@ class AuthLoginInput(BaseModel):
 
     member_id: str | None = None  # defaults to the Polar user id if not given
     redirect_uri: str
-    env_file: Path
+    credentials_file: Path
     force: bool = False
     timeout: float = Field(default=300.0, ge=10.0)
