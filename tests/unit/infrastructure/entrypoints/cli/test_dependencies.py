@@ -1,4 +1,6 @@
 import logging
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -46,7 +48,10 @@ class TestGetPolarClient:
         monkeypatch.setattr(polar_settings, "USER_ID", None)
         mock_store = mock.AsyncMock(spec=JsonCredentialsStore)
         mock_store.read.return_value = StoredCredentialsFactory.build(
-            access_token="file-access-token", user_id="file-user-id"
+            access_token="file-access-token",
+            user_id="file-user-id",
+            obtained_at=datetime.now(UTC),
+            expires_in=473040000,
         )
         monkeypatch.setattr(dependencies_module, "get_credentials_store", lambda: mock_store)
 
@@ -72,7 +77,10 @@ class TestGetPolarClient:
         monkeypatch.setattr(polar_settings, "USER_ID", None)
         mock_store = mock.AsyncMock(spec=JsonCredentialsStore)
         mock_store.read.return_value = StoredCredentialsFactory.build(
-            access_token="file-access-token", user_id="file-user-id"
+            access_token="file-access-token",
+            user_id="file-user-id",
+            obtained_at=datetime.now(UTC),
+            expires_in=473040000,
         )
         monkeypatch.setattr(dependencies_module, "get_credentials_store", lambda: mock_store)
 
@@ -80,6 +88,46 @@ class TestGetPolarClient:
             assert isinstance(client, PolarAccessLinkClient)
 
         mock_store.read.assert_awaited_once()
+
+    async def test__stored_credentials_expired__warns_but_still_returns(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setattr(polar_settings, "ACCESS_TOKEN", None)
+        monkeypatch.setattr(polar_settings, "USER_ID", None)
+        mock_store = mock.AsyncMock(spec=JsonCredentialsStore)
+        mock_store.read.return_value = StoredCredentialsFactory.build(
+            access_token="file-access-token",
+            user_id="file-user-id",
+            obtained_at=datetime(2020, 1, 1, tzinfo=UTC),
+            expires_in=1,
+        )
+        monkeypatch.setattr(dependencies_module, "get_credentials_store", lambda: mock_store)
+
+        with caplog.at_level(logging.WARNING):
+            async with get_polar_client() as client:
+                assert isinstance(client, PolarAccessLinkClient)
+
+        assert any(record.levelno == logging.WARNING for record in caplog.records)
+
+    async def test__stored_credentials_not_expired__no_warning(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setattr(polar_settings, "ACCESS_TOKEN", None)
+        monkeypatch.setattr(polar_settings, "USER_ID", None)
+        mock_store = mock.AsyncMock(spec=JsonCredentialsStore)
+        mock_store.read.return_value = StoredCredentialsFactory.build(
+            access_token="file-access-token",
+            user_id="file-user-id",
+            obtained_at=datetime.now(UTC),
+            expires_in=473040000,
+        )
+        monkeypatch.setattr(dependencies_module, "get_credentials_store", lambda: mock_store)
+
+        with caplog.at_level(logging.WARNING):
+            async with get_polar_client() as client:
+                assert isinstance(client, PolarAccessLinkClient)
+
+        assert not any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 class TestGetNightStore:

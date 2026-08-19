@@ -1,3 +1,7 @@
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
+
 from tests.unit.factories.entities.credentials import StoredCredentialsFactory
 
 
@@ -19,3 +23,21 @@ class TestStoredCredentials:
         assert "***" in rendered
         assert "tok-must-never-be-logged" not in rendered
         assert "12345678" in rendered
+
+    def test__is_expired__before_boundary__false(self) -> None:
+        obtained_at = datetime(2026, 8, 18, tzinfo=UTC)
+        credentials = StoredCredentialsFactory.build(obtained_at=obtained_at, expires_in=100)
+
+        assert credentials.is_expired(now=obtained_at + timedelta(seconds=99)) is False
+
+    def test__is_expired__at_boundary__true(self) -> None:
+        obtained_at = datetime(2026, 8, 18, tzinfo=UTC)
+        credentials = StoredCredentialsFactory.build(obtained_at=obtained_at, expires_in=100)
+
+        assert credentials.is_expired(now=obtained_at + timedelta(seconds=100)) is True
+
+    def test__is_expired__after_boundary__true(self) -> None:
+        obtained_at = datetime(2026, 8, 18, tzinfo=UTC)
+        credentials = StoredCredentialsFactory.build(obtained_at=obtained_at, expires_in=100)
+
+        assert credentials.is_expired(now=obtained_at + timedelta(seconds=101)) is True

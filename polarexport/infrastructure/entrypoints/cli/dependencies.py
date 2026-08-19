@@ -1,6 +1,8 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC
+from datetime import datetime
 
 from polarexport.domain.const import API_NAME
 from polarexport.domain.const import CREDENTIALS_FILENAME
@@ -41,6 +43,10 @@ async def _resolve_credentials() -> tuple[str, str]:
     stored = await get_credentials_store().read(app_settings.AUTH_DIR / CREDENTIALS_FILENAME)
     if stored is not None:
         logger.debug("Resolved Polar credentials", extra={"source": "credentials file"})
+        if stored.is_expired(now=datetime.now(UTC)):
+            logger.warning(
+                "Stored Polar token is past its expiry; continuing anyway", extra={"user_id": stored.user_id}
+            )
         return stored.access_token, stored.user_id
 
     raise MissingCredentialsError("No Polar credentials found. Run `polarexport auth` first.")

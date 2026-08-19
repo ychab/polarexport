@@ -16,3 +16,6 @@ class DateRange:
     @property
     def days(self) -> int:
         return (self.date_max - self.date_min).days + 1
+
+    def __str__(self) -> str:
+        return f"{self.date_min.isoformat()} to {self.date_max.isoformat()}"

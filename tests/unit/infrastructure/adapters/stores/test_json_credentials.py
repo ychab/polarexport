@@ -64,6 +64,55 @@ class TestJsonCredentialsStore:
         assert result is None
         assert any(record.levelno == logging.WARNING for record in caplog.records)
 
+    @pytest.mark.parametrize(
+        "contents",
+        [
+            pytest.param("not json at all", id="not-json"),
+            pytest.param(json.dumps({"schema_version": 2, "user": "x"}), id="wrong-schema-version"),
+            pytest.param(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "api": "polar-accesslink-v3",
+                        "user_id": "123",
+                        "access_token": "tok-must-never-leak",
+                        "obtained_at": "2026-08-18T00:00:00+00:00",
+                    }
+                ),
+                id="missing-expires-in",
+            ),
+            pytest.param(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "api": "polar-accesslink-v3",
+                        "user_id": "123",
+                        "access_token": "tok-must-never-leak",
+                        "obtained_at": "not-a-date",
+                        "expires_in": 100,
+                    }
+                ),
+                id="invalid-obtained-at",
+            ),
+        ],
+    )
+    async def test__read__malformed_shapes__returns_none_and_warns_without_leaking_token(
+        self,
+        store: JsonCredentialsStore,
+        credentials_path: Path,
+        caplog: pytest.LogCaptureFixture,
+        contents: str,
+    ) -> None:
+        credentials_path.parent.mkdir(parents=True)
+        credentials_path.write_text(contents, encoding="utf-8")
+
+        with caplog.at_level(logging.WARNING):
+            result = await store.read(credentials_path)
+
+        assert result is None
+        assert any(record.levelno == logging.WARNING for record in caplog.records)
+        assert "tok-must-never-leak" not in caplog.text
+
     async def test__existing_credentials__no_force__refuses(
         self, store: JsonCredentialsStore, credentials_path: Path, obtained_at: datetime
     ) -> None:

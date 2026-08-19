@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 from typing import Final
 from unittest import mock
@@ -24,6 +25,7 @@ from polarexport.infrastructure.entrypoints.cli.commands.night import night_logi
 from polarexport.infrastructure.entrypoints.cli.commands.night import parse_sources
 from polarexport.infrastructure.entrypoints.cli.main import app
 
+from tests.unit.factories.entities.credentials import StoredCredentialsFactory
 from tests.unit.factories.entities.export import ExportManifestFactory
 from tests.unit.factories.entities.export import ExportReportFactory
 from tests.unit.factories.entities.sync import SourceSyncStatFactory
@@ -75,6 +77,15 @@ class TestNightCommand:
         target_path = "polarexport.infrastructure.entrypoints.cli.commands.night.night_logic"
         with mock.patch(target_path, new_callable=mock.AsyncMock) as patched:
             patched.return_value = (None, ExportReportFactory.build())
+            yield patched
+
+    @pytest.fixture(autouse=True)
+    def mock_get_credentials_store(self) -> Iterable[mock.Mock]:
+        """Defaults to 'no stored credentials' so no test touches the real data/auth/credentials.json."""
+        store = mock.Mock()
+        store.read = mock.AsyncMock(return_value=None)
+        target_path = "polarexport.infrastructure.entrypoints.cli.commands.night.get_credentials_store"
+        with mock.patch(target_path, return_value=store) as patched:
             yield patched
 
     def test__nominal(self, mock_night_logic: mock.AsyncMock, runner: CliRunner) -> None:
@@ -279,7 +290,7 @@ class TestNightCommand:
         assert "No Polar credentials found" in output
         assert "docs/authentication.md" in output
 
-    def test__unauthorized__actionable_message__token_not_echoed(
+    def test__unauthorized__no_stored_credentials__generic_message__token_not_echoed(
         self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner
     ) -> None:
         mock_night_logic.side_effect = _http_status_error(httpx.codes.UNAUTHORIZED)
@@ -289,8 +300,50 @@ class TestNightCommand:
         assert result.exit_code == 1
         output = clean_typer_text(result.output)
         assert "Authentication failed (401" in output
+        assert "polarexport auth" in output
         assert "docs/authentication.md" in output
         assert "dummy-access-token" not in output
+
+    def test__unauthorized__stored_credentials_not_expired__generic_message(
+        self,
+        mock_night_logic: mock.AsyncMock,
+        mock_get_credentials_store: mock.Mock,
+        runner: CliRunner,
+        clean_typer_text: TextCleaner,
+    ) -> None:
+        mock_night_logic.side_effect = _http_status_error(httpx.codes.UNAUTHORIZED)
+        obtained_at = datetime.now(UTC)
+        mock_get_credentials_store.return_value.read.return_value = StoredCredentialsFactory.build(
+            obtained_at=obtained_at, expires_in=473040000
+        )
+
+        result = runner.invoke(app, ["night"])
+
+        assert result.exit_code == 1
+        output = clean_typer_text(result.output)
+        assert "Authentication failed (401" in output
+        assert "expired" not in output
+
+    def test__unauthorized__stored_credentials_expired__names_expiry_and_auth_command(
+        self,
+        mock_night_logic: mock.AsyncMock,
+        mock_get_credentials_store: mock.Mock,
+        runner: CliRunner,
+        clean_typer_text: TextCleaner,
+    ) -> None:
+        mock_night_logic.side_effect = _http_status_error(httpx.codes.UNAUTHORIZED)
+        obtained_at = datetime.now(UTC) - timedelta(days=1000)
+        mock_get_credentials_store.return_value.read.return_value = StoredCredentialsFactory.build(
+            obtained_at=obtained_at, expires_in=100
+        )
+
+        result = runner.invoke(app, ["night"])
+
+        assert result.exit_code == 1
+        output = clean_typer_text(result.output)
+        assert "Your Polar token expired on" in output
+        assert "polarexport auth" in output
+        assert "Authentication failed (401" not in output
 
     def test__other_http_status_error__actionable_message__no_traceback(
         self, mock_night_logic: mock.AsyncMock, runner: CliRunner, clean_typer_text: TextCleaner

@@ -18,3 +18,12 @@ class TestDateRange:
     def test__days__inclusive_count(self) -> None:
         date_range = DateRange(date_min=date(2026, 7, 20), date_max=date(2026, 7, 27))
         assert date_range.days == 8
+
+    def test__str__renders_both_dates_iso(self) -> None:
+        date_range = DateRange(date_min=date(2026, 7, 20), date_max=date(2026, 7, 27))
+        assert str(date_range) == "2026-07-20 to 2026-07-27"
+
+    def test__repr__still_carries_field_names(self) -> None:
+        date_range = DateRange(date_min=date(2026, 7, 20), date_max=date(2026, 7, 27))
+        assert "date_min=" in repr(date_range)
+        assert "date_max=" in repr(date_range)

@@ -17,6 +17,7 @@ from polarexport.application.inputs.night import NightExportInput
 from polarexport.application.inputs.night import NightSyncInput
 from polarexport.application.use_cases.night_export import NightExportUseCase
 from polarexport.application.use_cases.night_sync import NightSyncUseCase
+from polarexport.domain.const import CREDENTIALS_FILENAME
 from polarexport.domain.const import POLAR_HISTORY_WINDOW_DAYS
 from polarexport.domain.entities.export import ExportReport
 from polarexport.domain.entities.sync import SyncReport
@@ -29,6 +30,7 @@ from polarexport.domain.exceptions import ProviderRateLimitError
 from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.infrastructure.config.settings.app import app_settings
 from polarexport.infrastructure.config.settings.polar import polar_settings
+from polarexport.infrastructure.entrypoints.cli.dependencies import get_credentials_store
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_archiver
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_mapper
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_store
@@ -62,6 +64,19 @@ async def night_logic(
     ).export(export_in, today=today, generated_at=generated_at)
 
     return sync_report, export_report
+
+
+def _unauthorized_message() -> str:
+    stored = asyncio.run(get_credentials_store().read(app_settings.AUTH_DIR / CREDENTIALS_FILENAME))
+    if stored is not None and stored.is_expired(now=datetime.now(UTC)):
+        expired_at = stored.obtained_at + timedelta(seconds=stored.expires_in)
+        return (
+            f"Your Polar token expired on {expired_at.date().isoformat()}. Run `polarexport auth` to authorize again."
+        )
+    return (
+        "Authentication failed (401 Unauthorized). Run `polarexport auth` to authorize again, or check "
+        "`POLAR_ACCESS_TOKEN` in `.env` if you set it by hand — see `docs/authentication.md`."
+    )
 
 
 def night(
@@ -145,7 +160,7 @@ def night(
     except ProviderRateLimitError as e:
         typer.secho(
             "Polar rate-limited this request even after retries. Nights already fetched are saved "
-            "in data/ — wait a while and run the command again to pick up where it left off.",
+            "in data/raw/ — wait a while and run the command again to pick up where it left off.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -153,19 +168,14 @@ def night(
     except httpx.RequestError as e:
         typer.secho(
             f"Could not reach Polar at {polar_settings.BASE_URL} ({e.__class__.__name__}). Nights "
-            "already fetched are saved in data/ — use --no-refresh to build the archive offline.",
+            "already fetched are saved in data/raw/ — use --no-refresh to build the archive offline.",
             fg=typer.colors.RED,
             err=True,
         )
         raise typer.Exit(code=1) from e
     except httpx.HTTPStatusError as e:
         if e.response.status_code == codes.UNAUTHORIZED:
-            typer.secho(
-                "Authentication failed (401 Unauthorized). Check POLAR_ACCESS_TOKEN in .env — see "
-                "docs/authentication.md.",
-                fg=typer.colors.RED,
-                err=True,
-            )
+            typer.secho(_unauthorized_message(), fg=typer.colors.RED, err=True)
         else:
             typer.secho(
                 f"Polar returned HTTP {e.response.status_code} even after retries. Nights already "

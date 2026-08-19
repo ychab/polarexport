@@ -11,6 +11,7 @@ from pathlib import Path
 from pydantic import HttpUrl
 
 import pytest
+from typer.testing import CliRunner
 
 from polarexport.application.inputs.night import NightExportInput
 from polarexport.application.inputs.night import NightSyncInput
@@ -19,8 +20,11 @@ from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.infrastructure.adapters.providers.polar.client import PolarAccessLinkClient
 from polarexport.infrastructure.adapters.stores.filesystem import FilesystemNightStore
 from polarexport.infrastructure.adapters.stores.json_credentials import JsonCredentialsStore
+from polarexport.infrastructure.config.settings.app import app_settings
+from polarexport.infrastructure.config.settings.polar import polar_settings
 from polarexport.infrastructure.entrypoints.cli.commands import night as night_module
 from polarexport.infrastructure.entrypoints.cli.commands.night import night_logic
+from polarexport.infrastructure.entrypoints.cli.main import app as cli_app
 
 from tests.integration.utils.wiremock import WireMockContext
 
@@ -150,3 +154,28 @@ class TestNightLogic:
                 assert dummy_token not in archive.read(name).decode("utf-8")
         assert dummy_token not in caplog.text
         assert credentials_path.is_file()
+
+
+class TestNightCLIMalformedCredentials:
+    @pytest.fixture(autouse=True)
+    def wiremock_polar_client(self) -> None:
+        """Overrides the module-level autouse fixture of the same name: this test must exercise the
+        real credential resolution path in `get_polar_client`, not bypass it with a pre-built client."""
+        return None
+
+    def test__malformed_credentials_file__prints_one_sentence__no_traceback(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(app_settings, "DATA_DIR", tmp_path / "data")
+        monkeypatch.setattr(polar_settings, "ACCESS_TOKEN", None)
+        monkeypatch.setattr(polar_settings, "USER_ID", None)
+        credentials_path = tmp_path / "data" / "auth" / "credentials.json"
+        credentials_path.parent.mkdir(parents=True)
+        credentials_path.write_text('{"schema_version": 2, "user": "x"}', encoding="utf-8")
+
+        result = CliRunner().invoke(cli_app, ["night"])
+
+        assert result.exit_code == 1
+        assert "KeyError" not in result.output
+        assert "Traceback" not in result.output
+        assert "No Polar credentials found" in result.output

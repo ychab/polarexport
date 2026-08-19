@@ -95,14 +95,22 @@ class JsonCredentialsStore(CredentialsStorePort):
 
         try:
             envelope: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
+
+            schema_version = envelope["schema_version"]
+            if schema_version != _SCHEMA_VERSION:
+                logger.warning(
+                    f"Unsupported credentials schema_version {schema_version}, skipping",
+                    extra={"path": str(path), "schema_version": schema_version},
+                )
+                return None
+
+            return StoredCredentials(
+                user_id=envelope["user_id"],
+                access_token=envelope["access_token"],
+                api=envelope["api"],
+                obtained_at=datetime.fromisoformat(envelope["obtained_at"]),
+                expires_in=envelope["expires_in"],
+            )
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError):
             logger.warning("Failed to parse stored credentials, skipping", extra={"path": str(path)})
             return None
-
-        return StoredCredentials(
-            user_id=envelope["user_id"],
-            access_token=envelope["access_token"],
-            api=envelope["api"],
-            obtained_at=datetime.fromisoformat(envelope["obtained_at"]),
-            expires_in=envelope["expires_in"],
-        )

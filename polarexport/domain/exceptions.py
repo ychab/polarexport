@@ -13,7 +13,7 @@ class ArchiveAlreadyExistsError(PolarExportError): ...  # target zip exists and 
 class ProviderRateLimitError(PolarExportError): ...  # a data source rate-limited us after retries were exhausted
 
 
-class MissingCredentialsError(PolarExportError): ...  # POLAR_ACCESS_TOKEN or POLAR_USER_ID not set
+class MissingCredentialsError(PolarExportError): ...  # neither the settings nor the credentials file yielded a token
 
 
 class AuthorizationTimeoutError(PolarExportError): ...  # local callback listener timed out waiting for the browser

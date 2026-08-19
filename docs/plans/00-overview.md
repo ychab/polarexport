@@ -164,6 +164,16 @@ Polar account export (`polar-user-data-export.zip`, 4 881 files) against what `n
 Both decisions for phase 15 (credentials inside the data root; a single `data/` root) were made by
 the user on 2026-08-19 and are recorded in the plan — do not re-open them.
 
+### Follow-up phase — from the 2026-08-19 review of phases 15-16
+
+Phases 15 and 16 are complete and green, and every phase-16 fidelity fix is verified against the real
+store. Phase 17 collects four defects found around that work — one crash, three wrong messages.
+
+| # | Phase | Why | Real token? |
+|---|-------|-----|-------------|
+| 17 | Credentials robustness | a malformed `credentials.json` escapes as a bare `KeyError`, against the port's own contract; `expires_in` is now stored but still unread; the 401 message points at `.env` | no |
+
+
 ## Definition of done — every phase
 
 ```bash
