@@ -76,6 +76,7 @@ def _serialize_sleep(sleep: Sleep | None) -> dict[str, Any] | None:
         "sleep_start_time": _iso(sleep.sleep_start_time),
         "sleep_end_time": _iso(sleep.sleep_end_time),
         "stages": _serialize_sleep_stages(sleep.stages),
+        "efficiency_percent": sleep.efficiency_percent,
         "continuity": sleep.continuity,
         "continuity_class": sleep.continuity_class.value if sleep.continuity_class is not None else None,
         "short_interruption_duration": sleep.short_interruption_duration,

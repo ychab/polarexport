@@ -164,6 +164,16 @@ class TestZipNightArchiverWrite:
         for source in NightSource:
             assert source.value in readme
 
+    async def test__write__archive_mode_is_0600(self, tmp_path: Path) -> None:
+        date_range = DateRange(date_min=date(2026, 7, 20), date_max=date(2026, 7, 20))
+        night = NightFactory.build(date=date(2026, 7, 20))
+        manifest = ExportManifestFactory.build(date_range=date_range, night_count=1, gaps=())
+        archiver = ZipNightArchiver()
+
+        result = await archiver.write([night], manifest, {}, output_dir=tmp_path, include_raw=False, force=False)
+
+        assert (result.path.stat().st_mode & 0o777) == 0o600
+
     async def test__access_token_never_appears_in_archive(self, tmp_path: Path) -> None:
         access_token = os.environ["POLAR_ACCESS_TOKEN"]
         date_range = DateRange(date_min=date(2026, 7, 20), date_max=date(2026, 7, 20))

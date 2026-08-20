@@ -40,3 +40,15 @@ class Sleep:
             raise ValueError(
                 f"sleep_start_time ({self.sleep_start_time}) must not be after sleep_end_time ({self.sleep_end_time})"
             )
+
+    @property
+    def efficiency_percent(self) -> float | None:
+        if self.stages is None or self.sleep_start_time is None or self.sleep_end_time is None:
+            return None
+        span_seconds = (self.sleep_end_time - self.sleep_start_time).total_seconds()
+        if span_seconds <= 0:
+            return None
+        # unrecognized_seconds is its own bucket alongside wake, not part of "asleep" — the account
+        # export's asleepDuration equals light + deep + rem exactly, with no contribution from it.
+        asleep = self.stages.light_seconds + self.stages.deep_seconds + self.stages.rem_seconds
+        return asleep / span_seconds * 100

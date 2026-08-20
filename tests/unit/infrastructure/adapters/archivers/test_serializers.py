@@ -3,6 +3,7 @@ from datetime import date
 from datetime import datetime
 
 from polarexport.domain.entities.night import Night
+from polarexport.domain.entities.sleep import Sleep
 from polarexport.domain.enums import ContinuityClass
 from polarexport.domain.enums import NightlyRechargeStatus
 from polarexport.domain.enums import NightSource
@@ -74,6 +75,23 @@ class TestSerializeSleep:
         result = _serialize_sleep(sleep)
         assert result is not None
         assert result["continuity_class"] is None
+
+    def test__with_stages_and_timing__serializes_efficiency_percent(self) -> None:
+        sleep = SleepFactory.build(
+            date=date(2026, 7, 20),
+            stages=SleepStages(light_seconds=500, deep_seconds=0, rem_seconds=0, unrecognized_seconds=500),
+            sleep_start_time=datetime(2026, 7, 20, 23, 0, tzinfo=UTC),
+            sleep_end_time=datetime(2026, 7, 20, 23, 0, tzinfo=UTC).replace(minute=16, second=40),
+        )
+        result = _serialize_sleep(sleep)
+        assert result is not None
+        assert result["efficiency_percent"] == 50.0
+
+    def test__without_stages__serializes_efficiency_percent_as_none(self) -> None:
+        sleep = Sleep(date=date(2026, 7, 20), stages=None)
+        result = _serialize_sleep(sleep)
+        assert result is not None
+        assert result["efficiency_percent"] is None
 
 
 class TestSerializeRecharge:

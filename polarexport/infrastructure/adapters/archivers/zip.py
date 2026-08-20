@@ -64,6 +64,10 @@ class ZipNightArchiver(NightArchiverPort):
 
         fd, tmp_name = tempfile.mkstemp(dir=output_dir, prefix=f".{target.name}.", suffix=".tmp")
         tmp_path = Path(tmp_name)
+        # 0600, chosen deliberately: these archives carry nightly biometrics, the same class of data
+        # as the bearer token in credentials.json. mkstemp already creates at 0600; this makes it a
+        # decision rather than leaving it as an accident of the atomic-write mechanism.
+        os.fchmod(fd, 0o600)
         try:
             with (
                 os.fdopen(fd, "wb") as raw_file,

@@ -44,6 +44,7 @@ not normalise them to UTC, the local offset is meaningful sleep context.
 |---|---|---|
 | `sleep_start_time` / `sleep_end_time` | ISO-8601 datetime, local offset | Start/end of the tracked sleep period |
 | `stages.light_seconds` / `deep_seconds` / `rem_seconds` / `unrecognized_seconds` | seconds | Time spent in each hypnogram stage |
+| `efficiency_percent` | percent | Derived: `(light + deep + rem) / (sleep_end_time - sleep_start_time) * 100`. `unrecognized_seconds` is excluded from the numerator. `null` when stages or start/end time is missing. Agrees with Polar's own `efficiencyPercent` (account export only) to four decimal places |
 | `continuity` | 1.0–5.0, higher is better | Sleep continuity score |
 | `continuity_class` | 1–5, higher is better | See "Continuity class" below |
 | `short_interruption_duration` / `long_interruption_duration` / `total_interruption_duration` | seconds | Time spent awake during the sleep period |
@@ -150,8 +151,8 @@ AccessLink exposes. The gap is structural, not a bug in this export:
   `continuityScore`, `efficiencyScore`, `remScore`, `n3Score` and others are account-export only.
 - **Interruption counts** — AccessLink gives interruption *duration* only, not how many interruptions
   made it up.
-- **Sleep efficiency, span and type** — derivable from `sleep_start_time` / `sleep_end_time` and the
-  stage totals in `nights.json`, but not provided as a field.
+- **Sleep span and type** — `sleepSpan` and `sleepType` are account-export only. Efficiency itself
+  *is* provided, as `efficiency_percent` above — see that field for the derivation.
 - **Hypnogram and skin-temperature resolution** — AccessLink is minute-keyed (hypnogram) or a single
   nightly aggregate (skin temperature); the account export samples both far more finely.
 - **Per-cycle sleep detail** — AccessLink gives a cycle *count* only.

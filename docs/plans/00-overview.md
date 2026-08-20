@@ -183,6 +183,17 @@ overrides the handler defaults, so it only appears on a plain checkout without d
 |---|-------|-----|-------------|
 | 18 | CLI output polish | the default handler pair prints every warning and error twice; warnings go to stdout while errors go to stderr | no |
 
+### Follow-up phase — from the 2026-08-20 account-export audit
+
+Phase 18 is complete and green. A second account export (generated 2026-08-05, overlapping the local
+store on 13 nights) was diffed field-by-field against a fresh export: **every value matches**, including
+continuity, which is a direct Polar metric and agreed on all 13 nights. Phase 19 is one small feature
+the audit justified with numbers, plus corrections to documentation it proved imprecise.
+
+| # | Phase | Why | Real token? |
+|---|-------|-----|-------------|
+| 19 | Derived sleep metrics | sleep efficiency is exactly derivable from fields already exported (93.0541 vs Polar's 93.05413687) but is still listed as unavailable; three audit corrections | no |
+
 
 ## Definition of done — every phase
 

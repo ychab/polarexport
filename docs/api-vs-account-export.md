@@ -47,10 +47,15 @@ and duration alone cannot distinguish the two.
 
 ## Sleep efficiency, span and type
 
-`efficiencyPercent`, `sleepSpan`, `asleepDuration`, `sleepType` (e.g. `SLEEP_PLUS_STAGES`), and the
-`feedback` code are account-export only. Efficiency is derivable from `sleep_start_time` /
-`sleep_end_time` and the stage totals already in `nights.json`, so nothing is truly lost here — it
-just is not handed over pre-computed.
+Efficiency is derived and present in `nights.json` as `sleep.efficiency_percent`: `(light + deep +
+rem) / (sleep_end_time - sleep_start_time) * 100`. The 2026-08-20 audit confirmed the derivation is
+exact, not approximate — it agreed with the account export's own `efficiencyPercent` to four decimal
+places on the audited night (93.0541 vs 93.05413687436159).
+
+`sleepSpan`, `asleepDuration`, `sleepType` (e.g. `SLEEP_PLUS_STAGES`), and the `feedback` code remain
+account-export only — `sleepSpan` and `asleepDuration` are just the two inputs to the efficiency
+formula above, already available separately as `sleep_start_time` / `sleep_end_time` and the stage
+totals.
 
 ## Hypnogram and skin-temperature resolution
 
@@ -62,8 +67,16 @@ while the account export carries roughly 100 samples per night at 5-minute spaci
 
 ## Per-cycle sleep detail
 
-AccessLink gives `sleep_cycles` as a count. The account export has the full array of individual
-cycles.
+AccessLink gives `sleep_cycles` as a count. The account export carries a **sleep-depth curve**
+instead of per-cycle records: `sleepResult.sleepCycles.cycles.sleepCycleModels` is an array of
+`{"secondsFromSleepStart": 49695, "sleepDepthStart": 0.8860457}` entries — a normalised 0–1 depth
+value at each cycle *boundary*, not a per-cycle record with stage breakdowns.
+
+`sleep_cycles` is not off by one against this array. The 2026-08-20 audit compared the two on all 13
+overlapping nights and found a constant `+1` difference (e.g. ours `5`, account `6`), never anything
+else: `sleepCycleModels` entries are boundaries, so *n+1* boundaries delimit *n* cycles and the two
+sources agree exactly once that's accounted for. Nothing to fix — this is written down so the next
+comparison doesn't "correct" `sleep_cycles` by adding one.
 
 ## PPI / beat-to-beat raw samples
 
