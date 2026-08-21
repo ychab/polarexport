@@ -94,7 +94,7 @@ class TestZipExerciseArchiverWrite:
             total_calories=1911,
             sports=sports,
             profile=UserProfileFactory.build(
-                birthdate=date(1987, 6, 22), gender="MALE", height_cm=175.0, weight_kg=71.0
+                birthdate=date(1990, 3, 15), gender="MALE", height_cm=175.0, weight_kg=71.0
             ),
             history_window_warning=None,
         )
@@ -120,7 +120,7 @@ class TestZipExerciseArchiverWrite:
             },
         ]
         assert manifest_json["profile"] == {
-            "birthdate": "1987-06-22",
+            "birthdate": "1990-03-15",
             "gender": "MALE",
             "height_cm": 175.0,
             "weight_kg": 71.0,

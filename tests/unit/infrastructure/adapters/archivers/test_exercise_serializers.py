@@ -198,11 +198,11 @@ class TestSerializeProfile:
 
     def test__value__returns_dict(self) -> None:
         profile = UserProfile(
-            user_id="60233839", birthdate=date(1987, 6, 22), gender="MALE", height_cm=175.0, weight_kg=71.0
+            user_id="60233839", birthdate=date(1990, 3, 15), gender="MALE", height_cm=175.0, weight_kg=71.0
         )
 
         assert _serialize_profile(profile) == {
-            "birthdate": "1987-06-22",
+            "birthdate": "1990-03-15",
             "gender": "MALE",
             "height_cm": 175.0,
             "weight_kg": 71.0,
@@ -272,12 +272,12 @@ class TestRenderProfileNote:
 
     def test__full_profile__renders_all_fields(self) -> None:
         profile = UserProfile(
-            user_id="60233839", birthdate=date(1987, 6, 22), gender="MALE", height_cm=175.0, weight_kg=71.0
+            user_id="60233839", birthdate=date(1990, 3, 15), gender="MALE", height_cm=175.0, weight_kg=71.0
         )
 
         note = _render_profile_note(profile)
 
-        assert "1987-06-22" in note
+        assert "1990-03-15" in note
         assert "MALE" in note
         assert "175.0 cm" in note
         assert "71.0 kg" in note

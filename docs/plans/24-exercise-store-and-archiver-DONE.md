@@ -169,7 +169,7 @@ README says which mode produced the archive.
     {"sport": "AEROBICS", "session_count": 2, "total_duration_seconds": 7757.8, "total_calories": 1125},
     {"sport": "KICKBOXING_MARTIAL_ARTS", "session_count": 1, "total_duration_seconds": 5221.5, "total_calories": 786}
   ],
-  "profile": {"birthdate": "1987-06-22", "gender": "MALE", "height_cm": 175.0, "weight_kg": 71.0},
+  "profile": {"birthdate": "1990-03-15", "gender": "MALE", "height_cm": 175.0, "weight_kg": 71.0},
   "history_window_warning": null
 }
 ```

@@ -419,8 +419,8 @@ for every entity and value object added here (`ExerciseFactory`, `UserProfileFac
 - `Exercise.average_speed_kmh`: 10 000 m over `PT1H` → `10.0`; `None` when distance is `None`, when
   duration is `None`, and when duration is `0`.
 - `Exercise.calories_per_hour`: 786 kcal over 5221.533 s → ≈ 542; `None` on a zero duration.
-- `UserProfile.age` / `estimated_max_heart_rate`: birthdate 1987-06-22 evaluated on 2026-08-20 → 39
-  and 181; the day before the birthday → 38; `None` when `birthdate` is `None`.
+- `UserProfile.age` / `estimated_max_heart_rate`: birthdate 1990-03-15 evaluated on 2026-08-20 → 36
+  and 184; the day before the birthday → 35; `None` when `birthdate` is `None`.
 - `exercise_summary`: sessions across two sports aggregate into two `SportSummary` entries sorted by
   total duration descending, with sessions missing `calories` contributing 0 rather than raising.
 

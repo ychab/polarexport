@@ -229,6 +229,19 @@ is explicitly deferred.
 Phases 21–25 are sequential except 24, which needs no network and can be built alongside 23. Phase 20
 is independent of all of them.
 
+## Follow-ups from the 2026-08-21 review of phases 20–25
+
+All six phases landed green — `make lint` clean, 638 tests, 100 % branch coverage — and a live
+`polarexport exercise` run produced a correct 7-session archive. Two gaps the review turned up:
+
+| # | Phase | Why | Real token? |
+|---|---|---|---|
+| 26 | Scrub the real birthdate | phases 21/24 used the account owner's real birthdate as a worked example and the agents copied it into tests; the repo is public | no |
+| 27 | Surface speed statistics | phase 23 verified the speed sample units and mapped `SpeedStats`; phase 24's serializer was written against the *other* branch and never emits it, so the requested min/max speed never reach the archive | no |
+
+Both are standalone and independent of each other. Phase 26 first — it is a privacy issue in a public
+repo. Phase 27 is the only part of the original request still unmet.
+
 
 ## Definition of done — every phase
 
