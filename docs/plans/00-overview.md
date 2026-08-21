@@ -195,6 +195,41 @@ the audit justified with numbers, plus corrections to documentation it proved im
 | 19 | Derived sleep metrics | sleep efficiency is exactly derivable from fields already exported (93.0541 vs Polar's 93.05413687) but is still listed as unavailable; three audit corrections | no |
 
 
+### New feature — training sessions, from the 2026-08-21 request
+
+The user asked for a command exporting sport sessions (kickboxing, jogging, walking) with heart-rate
+stats, distance, speed, duration, calories and enough intensity signal for an agent to reason about
+effort, plus a coverage badge in `README.md`.
+
+The command is named **`exercise`**, not `activity`: Polar's own vocabulary reserves "activity" for
+daily step and calorie totals, a separate dataset that may become its own command later.
+
+`GET /v3/exercises` was probed live on 2026-08-20. It is non-transactional (the transactional
+resource is deprecated and `GET` on it returns `405`), takes `samples` / `zones` / `route` query
+parameters, has **no date filter**, and retains **30 days** — not the nights' 28. Two findings shape
+the design: Polar's `HeartRate` schema has no `minimum`, so minimum bpm must be derived from the
+per-second sample series (verified: recomputing the *average* from samples reproduces Polar's own to
+within rounding on all three sessions in the window); and `?zones=true` returns time-in-zone for free,
+which is the intensity signal the request is really after.
+
+Decisions taken with the user: archive carries derived stats, zones, and a **per-minute** heart-rate
+curve — never the raw per-second series, which stays in `data/raw/`; the Polar profile (height,
+weight, birthdate) ships in the manifest so intensity can be normalised; night/exercise cross-linking
+is explicitly deferred.
+
+| # | Phase | Why | Real token? |
+|---|-------|-----|-------------|
+| 20 | CI and coverage badges | CI already uploads to Codecov; only the README badges are missing | no |
+| 21 | Exercise domain | entities, value objects, ISO-8601 duration parsing, derived metrics | no |
+| 22 | Exercise application | ports, inputs, sync + export use cases; dedup is by id after the fetch, not by date before it | no |
+| 23 | Polar exercise adapter | live asset capture, DTOs (Polar mixes hyphen and underscore keys), mappers, client | **yes** |
+| 24 | Exercise store and archiver | one file per session (a day can hold several), shared atomic-zip write, archive README | no |
+| 25 | `exercise` command and docs | the command, and the `CLAUDE.md` scope line that currently says sport sessions are out of scope | no |
+
+Phases 21–25 are sequential except 24, which needs no network and can be built alongside 23. Phase 20
+is independent of all of them.
+
+
 ## Definition of done — every phase
 
 ```bash

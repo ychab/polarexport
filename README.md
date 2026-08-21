@@ -1,10 +1,14 @@
 # polarexport
 
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
+[![CI](https://github.com/ychab/polarexport/actions/workflows/ci.yml/badge.svg)](https://github.com/ychab/polarexport/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/ychab/polarexport/graph/badge.svg)](https://codecov.io/gh/ychab/polarexport)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
 Export your Polar night data — sleep, nightly recharge, skin temperature, SleepWise, continuous heart
 rate — as a self-contained `.zip` archive you can hand to an AI agent for analysis.
@@ -195,6 +199,9 @@ make test         # full suite at 100% branch coverage (starts WireMock via Dock
 make test-unit    # unit tests only, no Docker required
 make help         # every available target
 ```
+
+Coverage is enforced at 100% branch coverage by `pytest --cov-fail-under`; the badge reports the
+figure, the build enforces it.
 
 ## Claude Code
 
