@@ -1,0 +1,13 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/v3/exercises",
+    "queryParameters": {
+      "zones": { "absent": true }
+    }
+  },
+  "response": {
+    "status": 403
+  }
+}

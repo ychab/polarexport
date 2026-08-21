@@ -1,4 +1,5 @@
 import json
+from datetime import UTC
 from datetime import date
 from datetime import datetime
 from typing import Any
@@ -8,8 +9,10 @@ from pydantic import ValidationError
 import pytest
 
 from polarexport.domain.enums import ContinuityClass
+from polarexport.domain.enums import LoadInterpretation
 from polarexport.domain.enums import NightlyRechargeStatus
 from polarexport.domain.value_objects.alertness_hour import AlertnessHour
+from polarexport.infrastructure.adapters.providers.polar.mappers import PolarExerciseMapper
 from polarexport.infrastructure.adapters.providers.polar.mappers import PolarNightMapper
 
 from tests import ASSETS_DIR
@@ -244,3 +247,186 @@ class TestPolarNightMapper:
     def test__to_sleepwise__malformed__raises(self, mapper: PolarNightMapper) -> None:
         with pytest.raises(ValidationError):
             mapper.to_sleepwise({"date": "2026-08-15", "alertness": {"grade_validity_seconds": "not-a-number"}})
+
+
+class TestPolarExerciseMapper:
+    @pytest.fixture
+    def mapper(self) -> PolarExerciseMapper:
+        return PolarExerciseMapper()
+
+    # -------------------------------------------------------------------------
+    # to_exercises
+    # -------------------------------------------------------------------------
+
+    def test__to_exercises__not_available_interpretation__nulls_value_and_interpretation(
+        self, mapper: PolarExerciseMapper
+    ) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-18T11:32:08",
+            "start_time_utc_offset": 120,
+            "training_load_pro": {
+                "cardio-load": 10.0,
+                "cardio-load-interpretation": "NOT_AVAILABLE",
+                "muscle-load": -1.0,
+                "muscle-load-interpretation": "NOT_AVAILABLE",
+                "perceived-load": 0.0,
+                "perceived-load-interpretation": "NOT_AVAILABLE",
+            },
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        training_load = exercises[0].training_load
+        assert training_load is not None
+        assert training_load.cardio_load is None
+        assert training_load.cardio_load_interpretation is None
+        assert training_load.muscle_load is None
+        assert training_load.muscle_load_interpretation is None
+        assert training_load.perceived_load is None
+        assert training_load.perceived_load_interpretation is None
+
+    def test__to_exercises__unrecognized_interpretation__none_and_warns(
+        self, mapper: PolarExerciseMapper, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-18T11:32:08",
+            "start_time_utc_offset": 120,
+            "training_load_pro": {"cardio-load": 5.0, "cardio-load-interpretation": "SOMETHING_NEW"},
+        }
+
+        with caplog.at_level("WARNING"):
+            exercises = mapper.to_exercises({"abc123": payload})
+
+        training_load = exercises[0].training_load
+        assert training_load is not None
+        assert training_load.cardio_load is None
+        assert training_load.cardio_load_interpretation is None
+        assert "Unknown Polar load interpretation" in caplog.text
+
+    def test__to_exercises__known_interpretation__value_and_interpretation_kept(
+        self, mapper: PolarExerciseMapper
+    ) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-18T11:32:08",
+            "start_time_utc_offset": 120,
+            "training_load_pro": {"cardio-load": 81.1622, "cardio-load-interpretation": "HIGH"},
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        training_load = exercises[0].training_load
+        assert training_load is not None
+        assert training_load.cardio_load == 81.1622
+        assert training_load.cardio_load_interpretation is LoadInterpretation.HIGH
+
+    def test__to_exercises__missing_utc_offset__treated_as_utc(
+        self, mapper: PolarExerciseMapper, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        payload = {"id": "abc123", "start_time": "2026-08-18T11:32:08"}
+
+        with caplog.at_level("WARNING"):
+            exercises = mapper.to_exercises({"abc123": payload})
+
+        exercise = exercises[0]
+        assert exercise.start_time == datetime(2026, 8, 18, 11, 32, 8, tzinfo=UTC)
+        assert exercise.date == date(2026, 8, 18)
+        assert "missing start_time_utc_offset" in caplog.text
+
+    def test__to_exercises__malformed_duration__duration_none_rest_maps(self, mapper: PolarExerciseMapper) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-18T11:32:08",
+            "start_time_utc_offset": 120,
+            "duration": "not-a-duration",
+            "calories": 500,
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        exercise = exercises[0]
+        assert exercise.duration_seconds is None
+        assert exercise.calories == 500
+
+    def test__to_exercises__unknown_sample_type__ignored(self, mapper: PolarExerciseMapper) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-18T11:32:08",
+            "start_time_utc_offset": 120,
+            "samples": [{"sample_type": 999, "recording_rate": 1, "data": "1,2,3"}],
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        exercise = exercises[0]
+        assert exercise.heart_rate is None
+        assert exercise.heart_rate_per_minute is None
+        assert exercise.speed is None
+
+    def test__to_exercises__no_samples_key__heart_rate_minimum_none(self, mapper: PolarExerciseMapper) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-18T11:32:08",
+            "start_time_utc_offset": 120,
+            "heart_rate": {"average": 100, "maximum": 150},
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        heart_rate = exercises[0].heart_rate
+        assert heart_rate is not None
+        assert heart_rate.average == 100
+        assert heart_rate.maximum == 150
+        assert heart_rate.minimum is None
+
+    def test__to_exercises__all_zero_speed_samples__speed_none(self, mapper: PolarExerciseMapper) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-18T11:32:08",
+            "start_time_utc_offset": 120,
+            "samples": [{"sample_type": 1, "recording_rate": 1, "data": "0,0,0,0"}],
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        assert exercises[0].speed is None
+
+    def test__to_exercises__real_speed_samples__speed_populated(self, mapper: PolarExerciseMapper) -> None:
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-20T17:18:33",
+            "start_time_utc_offset": 120,
+            "samples": [{"sample_type": 1, "recording_rate": 1, "data": "0,2.5,5.0,0"}],
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        speed = exercises[0].speed
+        assert speed is not None
+        assert speed.average_kmh == 1.875
+        assert speed.maximum_kmh == 5.0
+        assert speed.minimum_kmh == 0.0
+
+    def test__to_exercises__malformed_payload__skipped(
+        self, mapper: PolarExerciseMapper, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level("WARNING"):
+            exercises = mapper.to_exercises({"bad-id": {"id": "bad-id"}})  # missing start_time
+
+        assert exercises == ()
+        assert "Failed to map Polar exercise" in caplog.text
+
+    # -------------------------------------------------------------------------
+    # to_profile
+    # -------------------------------------------------------------------------
+
+    def test__to_profile__malformed__returns_none(
+        self, mapper: PolarExerciseMapper, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level("WARNING"):
+            profile = mapper.to_profile({"member-id": "redacted-member"})  # missing polar-user-id
+
+        assert profile is None
+        assert "Failed to map Polar user profile" in caplog.text

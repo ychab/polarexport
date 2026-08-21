@@ -126,3 +126,99 @@ class CircadianBedtimeDTO(BaseModel):
     sleep_gate_start_time: datetime | None = None
     sleep_gate_end_time: datetime | None = None
     sleep_timezone_offset_minutes: int | None = None
+
+
+class HeartRateDTO(BaseModel):
+    """`heart_rate` on an exercise. There is no `minimum` — Polar's swagger doesn't document one and
+    the live capture never returns it; the domain derives it from the sample series instead."""
+
+    model_config = ConfigDict(extra="allow")
+
+    average: int | None = None
+    maximum: int | None = None
+
+
+class HeartRateZoneDTO(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    index: int
+    lower_limit: int | None = None
+    upper_limit: int | None = None
+    in_zone: str | None = None  # ISO-8601 duration, e.g. "PT15M41S"
+
+
+class ExerciseSampleDTO(BaseModel):
+    """One entry of the `samples` array on `GET /v3/exercises?samples=true`.
+
+    `sample_type` was captured live on 2026-08-20 as a JSON **integer** (`0`), not the string the
+    plan's provisional design expected — Pydantic coerces either shape, so the field stays `int` and
+    reality wins per the project's own rule for swagger/reality mismatches.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    recording_rate: int | None = None
+    sample_type: int
+    data: str
+
+
+class TrainingLoadProDTO(BaseModel):
+    """`training_load_pro` on an exercise. Every field but `user_rpe` mixes in hyphenated keys."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    cardio_load: float | None = Field(default=None, alias="cardio-load")
+    cardio_load_interpretation: str | None = Field(default=None, alias="cardio-load-interpretation")
+    muscle_load: float | None = Field(default=None, alias="muscle-load")
+    muscle_load_interpretation: str | None = Field(default=None, alias="muscle-load-interpretation")
+    perceived_load: float | None = Field(default=None, alias="perceived-load")
+    perceived_load_interpretation: str | None = Field(default=None, alias="perceived-load-interpretation")
+    user_rpe: str | None = Field(default=None, alias="user-rpe")
+
+
+class ExerciseDTO(BaseModel):
+    """`GET /v3/exercises` — verified against a live capture on 2026-08-20.
+
+    Polar mixes naming conventions inside a single response: sample-series and everything else on the
+    exercise use underscores (`start_time`, `detailed_sport_info`), training-load and running-index use
+    hyphens (`cardio-load`, `running-index`).
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    id: str
+    upload_time: datetime | None = None
+    polar_user: HttpUrl | None = None
+    device: str | None = None
+    device_id: str | None = None
+    start_time: datetime  # naive local wall-clock time — see start_time_utc_offset
+    start_time_utc_offset: int | None = None  # minutes
+    duration: str | None = None  # ISO-8601, e.g. "PT5221.533S"
+    sport: str | None = None
+    detailed_sport_info: str | None = None
+    has_route: bool | None = None
+    calories: int | None = None
+    distance: float | None = None  # metres
+    fat_percentage: int | None = None
+    carbohydrate_percentage: int | None = None
+    protein_percentage: int | None = None
+    heart_rate: HeartRateDTO | None = None
+    heart_rate_zones: list[HeartRateZoneDTO] | None = None  # only present when `?zones=true`
+    samples: list[ExerciseSampleDTO] | None = None  # only present when `?samples=true`
+    training_load_pro: TrainingLoadProDTO | None = None
+    running_index: int | None = Field(default=None, alias="running-index")
+
+
+class UserProfileDTO(BaseModel):
+    """`GET /v3/users/{user_id}` — verified against a live capture on 2026-08-20."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    polar_user_id: int = Field(alias="polar-user-id")
+    member_id: str | None = Field(default=None, alias="member-id")
+    first_name: str | None = Field(default=None, alias="first-name")
+    last_name: str | None = Field(default=None, alias="last-name")
+    birthdate: date | None = None
+    gender: str | None = None
+    height: float | None = None  # cm
+    weight: float | None = None  # kg

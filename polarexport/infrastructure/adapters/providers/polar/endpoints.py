@@ -9,3 +9,9 @@ CONTINUOUS_HEART_RATE: Final[str] = "/v3/users/continuous-heart-rate/{date}"
 SKIN_TEMPERATURE: Final[str] = "/v3/users/biosensing/skintemperature"
 SLEEPWISE_ALERTNESS: Final[str] = "/v3/users/sleepwise/alertness/date"
 SLEEPWISE_CIRCADIAN_BEDTIME: Final[str] = "/v3/users/sleepwise/circadian-bedtime/date"
+
+# Verified live on 2026-08-20. The transactional `/v3/users/{user-id}/exercise-transactions` path is
+# deliberately not used — Polar's swagger marks it deprecated, GET returns 405, and committing a
+# transaction consumes the data for the client, destroying the ability to re-fetch it.
+EXERCISES: Final[str] = "/v3/exercises"
+USER: Final[str] = "/v3/users/{user_id}"

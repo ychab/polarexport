@@ -3,9 +3,11 @@ from datetime import timedelta
 
 import pytest
 
+from polarexport.domain.enums import LoadInterpretation
 from polarexport.domain.enums import NightSource
 from polarexport.domain.enums import SourceAvailability
 from polarexport.infrastructure.adapters.providers.polar.client import PolarAccessLinkClient
+from polarexport.infrastructure.adapters.providers.polar.mappers import PolarExerciseMapper
 
 from tests.integration.utils.wiremock import WireMockContext
 
@@ -147,3 +149,116 @@ class TestPolarAccessLinkClient:
             "deviation_from_baseline_celsius": 1.0,
         }
         assert result.payloads[date_max] is None
+
+    # -------------------------------------------------------------------------
+    # fetch_exercises
+    # -------------------------------------------------------------------------
+
+    async def test__fetch_exercises__happy_path__maps_end_to_end(self, polar_client: PolarAccessLinkClient) -> None:
+        result = await polar_client.fetch_exercises(with_samples=True, with_zones=True)
+
+        assert result.availability == SourceAvailability.AVAILABLE
+        assert result.request_count == 1
+        assert len(result.payloads) == 3
+
+        exercises = {exercise.id: exercise for exercise in PolarExerciseMapper().to_exercises(result.payloads)}
+        kickboxing = exercises["54klrKbL"]
+        assert kickboxing.calories == 786
+        assert kickboxing.sport_label == "Kickboxing Martial Arts"
+        assert kickboxing.heart_rate is not None
+        assert kickboxing.heart_rate.average == 121
+        assert kickboxing.heart_rate.maximum == 175
+        trimmed_hr_samples = [
+            int(value)
+            for value in result.payloads["54klrKbL"]["samples"][0]["data"].split(",")
+            if value not in ("", "0")
+        ]
+        assert kickboxing.heart_rate.minimum == min(trimmed_hr_samples)
+        assert kickboxing.heart_rate_zones is not None
+        assert len(kickboxing.heart_rate_zones) == 5
+
+    async def test__fetch_exercises__outdoor_session__speed_derived_from_samples(
+        self, polar_client: PolarAccessLinkClient
+    ) -> None:
+        result = await polar_client.fetch_exercises(with_samples=True, with_zones=True)
+
+        exercises = {exercise.id: exercise for exercise in PolarExerciseMapper().to_exercises(result.payloads)}
+        walk = exercises["PvkgKa3J"]
+        assert walk.has_route is True
+        assert walk.speed is not None
+        assert walk.speed.average_kmh is not None
+        assert walk.speed.average_kmh > 0
+
+    async def test__fetch_exercises__indoor_session__speed_none(self, polar_client: PolarAccessLinkClient) -> None:
+        result = await polar_client.fetch_exercises(with_samples=True, with_zones=True)
+
+        exercises = {exercise.id: exercise for exercise in PolarExerciseMapper().to_exercises(result.payloads)}
+        aerobics = exercises["ymmr1Q46"]
+        assert aerobics.has_route is False
+        assert aerobics.speed is None
+
+    async def test__fetch_exercises__load_sentinels__mapped_to_none(self, polar_client: PolarAccessLinkClient) -> None:
+        result = await polar_client.fetch_exercises(with_samples=True, with_zones=True)
+
+        exercises = {exercise.id: exercise for exercise in PolarExerciseMapper().to_exercises(result.payloads)}
+        kickboxing = exercises["54klrKbL"]
+        assert kickboxing.training_load is not None
+        assert kickboxing.training_load.cardio_load_interpretation is LoadInterpretation.HIGH
+        assert kickboxing.training_load.muscle_load is None
+        assert kickboxing.training_load.muscle_load_interpretation is None
+        assert kickboxing.training_load.perceived_load is None
+        assert kickboxing.training_load.perceived_load_interpretation is None
+
+    async def test__fetch_exercises__403__unavailable(self, polar_client: PolarAccessLinkClient) -> None:
+        result = await polar_client.fetch_exercises(with_samples=False, with_zones=False)
+
+        assert result.availability == SourceAvailability.UNAVAILABLE
+        assert result.payloads == {}
+
+    async def test__fetch_exercises__empty_window__available_no_payloads(
+        self,
+        polar_client: PolarAccessLinkClient,
+        polar_wiremock: WireMockContext,
+    ) -> None:
+        polar_wiremock.create_mapping(
+            method="GET",
+            url_path="/v3/exercises",
+            status=200,
+            json_body=[],
+            priority=1,
+        )
+
+        result = await polar_client.fetch_exercises(with_samples=True, with_zones=True)
+
+        assert result.availability == SourceAvailability.AVAILABLE
+        assert result.payloads == {}
+
+    # -------------------------------------------------------------------------
+    # fetch_profile
+    # -------------------------------------------------------------------------
+
+    async def test__fetch_profile__happy_path__maps_end_to_end(self, polar_client: PolarAccessLinkClient) -> None:
+        payload = await polar_client.fetch_profile()
+
+        assert payload is not None
+        profile = PolarExerciseMapper().to_profile(payload)
+        assert profile is not None
+        assert profile.birthdate is not None
+        assert profile.birthdate.isoformat() == "1990-03-15"
+        assert profile.age(on=date(2026, 8, 20)) == 36
+
+    async def test__fetch_profile__404__none(
+        self,
+        polar_client: PolarAccessLinkClient,
+        polar_wiremock: WireMockContext,
+    ) -> None:
+        polar_wiremock.create_mapping(
+            method="GET",
+            url_path="/v3/users/dummy-user",
+            status=404,
+            priority=1,
+        )
+
+        profile = await polar_client.fetch_profile()
+
+        assert profile is None

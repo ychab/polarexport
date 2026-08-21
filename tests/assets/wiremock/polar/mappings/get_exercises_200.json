@@ -1,0 +1,12 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "GET",
+    "urlPath": "/v3/exercises"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "exercises.json",
+    "headers": { "Content-Type": "application/json" }
+  }
+}

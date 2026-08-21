@@ -1,0 +1,236 @@
+[
+  {
+    "id": "ymmr1Q46",
+    "upload_time": "2026-08-17T12:10:01Z",
+    "polar_user": "https://www.polaraccesslink.com/v3/users/60233839",
+    "device": "Polar Ignite 3",
+    "device_id": "C0BA1B23",
+    "start_time": "2026-08-17T13:04:59",
+    "start_time_utc_offset": 120,
+    "duration": "PT3738.057S",
+    "heart_rate": {
+      "average": 111,
+      "maximum": 172
+    },
+    "sport": "OTHER",
+    "has_route": false,
+    "detailed_sport_info": "AEROBICS",
+    "calories": 526,
+    "fat_percentage": 61,
+    "carbohydrate_percentage": 39,
+    "protein_percentage": 0,
+    "heart_rate_zones": [
+      {
+        "index": 0,
+        "lower_limit": 98,
+        "upper_limit": 118,
+        "in_zone": "PT37M5S"
+      },
+      {
+        "index": 1,
+        "lower_limit": 118,
+        "upper_limit": 137,
+        "in_zone": "PT10M"
+      },
+      {
+        "index": 2,
+        "lower_limit": 137,
+        "upper_limit": 157,
+        "in_zone": "PT3M18S"
+      },
+      {
+        "index": 3,
+        "lower_limit": 157,
+        "upper_limit": 176,
+        "in_zone": "PT1M16S"
+      },
+      {
+        "index": 4,
+        "lower_limit": 176,
+        "upper_limit": 196,
+        "in_zone": "PT0S"
+      }
+    ],
+    "samples": [
+      {
+        "recording_rate": 1,
+        "sample_type": 0,
+        "data": "100,100,99,98,96,96,96,95,95,94,94,93,93,93,93,93,93,93,93,94,94,95,94,93,91,90,89,88,88,88,87,86,87,87,87,87,87,87,87,87"
+      },
+      {
+        "recording_rate": 1,
+        "sample_type": 1,
+        "data": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+      },
+      {
+        "recording_rate": 1,
+        "sample_type": 10,
+        "data": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+      }
+    ],
+    "training_load_pro": {
+      "cardio-load": 38.3418,
+      "cardio-load-interpretation": "MEDIUM",
+      "muscle-load": -1.0,
+      "muscle-load-interpretation": "NOT_AVAILABLE",
+      "perceived-load": 0.0,
+      "perceived-load-interpretation": "NOT_AVAILABLE",
+      "user-rpe": "UNKNOWN"
+    }
+  },
+  {
+    "id": "54klrKbL",
+    "upload_time": "2026-08-18T10:59:25Z",
+    "polar_user": "https://www.polaraccesslink.com/v3/users/60233839",
+    "device": "Polar Flow app",
+    "start_time": "2026-08-18T11:32:08",
+    "start_time_utc_offset": 120,
+    "duration": "PT5221.533S",
+    "heart_rate": {
+      "average": 121,
+      "maximum": 175
+    },
+    "sport": "OTHER",
+    "has_route": false,
+    "detailed_sport_info": "KICKBOXING_MARTIAL_ARTS",
+    "calories": 786,
+    "heart_rate_zones": [
+      {
+        "index": 0,
+        "lower_limit": 98,
+        "upper_limit": 118,
+        "in_zone": "PT15M41S"
+      },
+      {
+        "index": 1,
+        "lower_limit": 118,
+        "upper_limit": 137,
+        "in_zone": "PT16M18S"
+      },
+      {
+        "index": 2,
+        "lower_limit": 137,
+        "upper_limit": 157,
+        "in_zone": "PT21M36S"
+      },
+      {
+        "index": 3,
+        "lower_limit": 157,
+        "upper_limit": 176,
+        "in_zone": "PT8M44S"
+      },
+      {
+        "index": 4,
+        "lower_limit": 176,
+        "upper_limit": 196,
+        "in_zone": "PT0S"
+      }
+    ],
+    "samples": [
+      {
+        "recording_rate": 1,
+        "sample_type": 0,
+        "data": "80,80,80,80,79,79,78,78,78,78,78,77,77,77,74,74,74,73,73,73,71,71,70,70,70,70,70,70,71,71,71,71,71,71,71,71,71,71,73,73"
+      }
+    ],
+    "training_load_pro": {
+      "cardio-load": 81.1622,
+      "cardio-load-interpretation": "HIGH",
+      "muscle-load": -1.0,
+      "muscle-load-interpretation": "NOT_AVAILABLE",
+      "perceived-load": 0.0,
+      "perceived-load-interpretation": "NOT_AVAILABLE",
+      "user-rpe": "UNKNOWN"
+    }
+  },
+  {
+    "id": "PvkgKa3J",
+    "upload_time": "2026-08-20T16:32:15Z",
+    "polar_user": "https://www.polaraccesslink.com/v3/users/60233839",
+    "device": "Polar Ignite 3",
+    "device_id": "C0BA1B23",
+    "start_time": "2026-08-20T17:18:33",
+    "start_time_utc_offset": 120,
+    "duration": "PT4257.264S",
+    "distance": 5008.0,
+    "heart_rate": {
+      "average": 113,
+      "maximum": 134
+    },
+    "sport": "OTHER",
+    "has_route": true,
+    "detailed_sport_info": "WALKING",
+    "calories": 633,
+    "fat_percentage": 60,
+    "carbohydrate_percentage": 40,
+    "protein_percentage": 0,
+    "heart_rate_zones": [
+      {
+        "index": 0,
+        "lower_limit": 98,
+        "upper_limit": 118,
+        "in_zone": "PT33M8S"
+      },
+      {
+        "index": 1,
+        "lower_limit": 118,
+        "upper_limit": 137,
+        "in_zone": "PT29M27S"
+      },
+      {
+        "index": 2,
+        "lower_limit": 137,
+        "upper_limit": 157,
+        "in_zone": "PT0S"
+      },
+      {
+        "index": 3,
+        "lower_limit": 157,
+        "upper_limit": 176,
+        "in_zone": "PT0S"
+      },
+      {
+        "index": 4,
+        "lower_limit": 176,
+        "upper_limit": 196,
+        "in_zone": "PT0S"
+      }
+    ],
+    "samples": [
+      {
+        "recording_rate": 1,
+        "sample_type": 0,
+        "data": "93,93,93,93,93,93,93,94,94,95,95,96,96,96,96,97,97,97,97,97,97,97,98,98,98,98,98,98,98,98,98,98,98,98,98,96,96,96,96,95"
+      },
+      {
+        "recording_rate": 1,
+        "sample_type": 1,
+        "data": "0.0492,0.2677,0.7313,1.3702,2.0296,2.6568,0.0,0.0,3.2625,3.776,4.1748,4.5043,1.2347,2.9426,3.5737,4.2162,4.3686,3.8638,4.3129,4.7712,4.7061,5.1232,5.5182,5.6629,5.785,5.8801,5.9233,5.6784,5.3499,5.1169,4.9775,4.931,4.8819,4.8819,4.8662,4.8169,4.7804,4.8041,4.8371,4.8509"
+      },
+      {
+        "recording_rate": 1,
+        "sample_type": 2,
+        "data": "0,0,0,0,0,0,0,0,0,0,0,27,41,41,54,54,54,54,54,54,54,54,54,55,55,56,56,56,56,56,56,56,56,54,54,53,53,54,54,54"
+      },
+      {
+        "recording_rate": 1,
+        "sample_type": 3,
+        "data": "0,0,0,0,0,0,0,0,0,0,0,0,0,50.14,50.14,49.988,49.835,49.531,49.226,49.073,48.616,48.311,47.854,47.549,47.092,46.635,46.178,45.873,45.416,45.111,44.654,44.349,44.044,43.739,43.587,43.282,43.13,42.825,42.673,42.52"
+      },
+      {
+        "recording_rate": 1,
+        "sample_type": 10,
+        "data": "0.0,0.0,0.20000000298023224,0.6000000238418579,1.100000023841858,2.0,2.0,2.0,2.799999952316284,3.9000000953674316,5.099999904632568,6.400000095367432,7.699999809265137,8.600000381469727,20.600000381469727,21.600000381469727,28.299999237060547,32.79999923706055,38.599998474121094,46.20000076293945,51.599998474121094,55.400001525878906,59.099998474121094,62.900001525878906,62.900001525878906,62.900001525878906,63.0,63.0,63.0,63.0,63.0,63.0,63.0,63.0,63.0,63.099998474121094,64.4000015258789,65.5,66.9000015258789,68.30000305175781"
+      }
+    ],
+    "training_load_pro": {
+      "cardio-load": 45.2489,
+      "cardio-load-interpretation": "MEDIUM",
+      "muscle-load": -1.0,
+      "muscle-load-interpretation": "NOT_AVAILABLE",
+      "perceived-load": 0.0,
+      "perceived-load-interpretation": "NOT_AVAILABLE",
+      "user-rpe": "UNKNOWN"
+    }
+  }
+]

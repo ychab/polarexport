@@ -1,0 +1,12 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "GET",
+    "urlPath": "/v3/users/dummy-user"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "user-profile.json",
+    "headers": { "Content-Type": "application/json" }
+  }
+}

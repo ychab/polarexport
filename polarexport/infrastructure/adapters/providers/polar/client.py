@@ -16,8 +16,11 @@ from tenacity import retry
 from tenacity import retry_if_exception
 from tenacity import wait_exponential
 
+from polarexport.application.ports.providers.exercise import ExerciseFetchResult
+from polarexport.application.ports.providers.exercise import ExerciseProviderPort
 from polarexport.application.ports.providers.night import NightProviderPort
 from polarexport.application.ports.providers.night import SourceFetchResult
+from polarexport.application.ports.providers.profile import ProfileProviderPort
 from polarexport.domain.enums import NightSource
 from polarexport.domain.enums import SourceAvailability
 from polarexport.infrastructure.adapters.http import HttpClientMixin
@@ -46,7 +49,7 @@ def _stop_after_max_retries(retry_state: RetryCallState) -> bool:
     return retry_state.attempt_number >= client._max_retries
 
 
-class PolarAccessLinkClient(HttpClientMixin, NightProviderPort):
+class PolarAccessLinkClient(HttpClientMixin, NightProviderPort, ExerciseProviderPort, ProfileProviderPort):
     """Adapter for the Polar AccessLink v3 API.
 
     Transport only — returns raw payloads, never domain entities. Used as
@@ -187,6 +190,36 @@ class PolarAccessLinkClient(HttpClientMixin, NightProviderPort):
                 continue
             indexed[datetime.fromisoformat(timestamp).date()] = item
         return indexed
+
+    # -------------------------------------------------------------------------
+    # Exercises & profile
+    # -------------------------------------------------------------------------
+
+    async def fetch_exercises(self, *, with_samples: bool, with_zones: bool) -> ExerciseFetchResult:
+        params: dict[str, Any] = {}
+        if with_samples:
+            params["samples"] = "true"
+        if with_zones:
+            params["zones"] = "true"
+
+        try:
+            raw = await self._get(endpoints.EXERCISES, params=params)
+        except PolarForbiddenError:
+            return ExerciseFetchResult(payloads={}, availability=SourceAvailability.UNAVAILABLE, request_count=1)
+
+        sessions = cast("list[dict[str, Any]]", raw) if raw else []
+        payloads = {cast("str", session["id"]): session for session in sessions}
+        logger.info("Fetched Polar exercises", extra={"endpoint": endpoints.EXERCISES, "count": len(payloads)})
+        return ExerciseFetchResult(payloads=payloads, availability=SourceAvailability.AVAILABLE, request_count=1)
+
+    async def fetch_profile(self) -> dict[str, Any] | None:
+        endpoint = endpoints.USER.format(user_id=self._user_id)
+        try:
+            raw = await self._get(endpoint)
+        except PolarNotFoundError:
+            logger.warning("Polar user profile not found", extra={"endpoint": endpoint})
+            return None
+        return cast("dict[str, Any] | None", raw)
 
     # -------------------------------------------------------------------------
     # Transport
