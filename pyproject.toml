@@ -52,6 +52,7 @@ packages = ["polarexport"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "polarexport/infrastructure/adapters/archivers/templates/README.md" = "polarexport/infrastructure/adapters/archivers/templates/README.md"
+"polarexport/infrastructure/adapters/archivers/templates/exercise-README.md" = "polarexport/infrastructure/adapters/archivers/templates/exercise-README.md"
 
 [tool.bumpversion]
 current_version = "0.1.0.dev0"

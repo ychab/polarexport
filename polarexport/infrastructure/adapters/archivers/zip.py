@@ -1,9 +1,6 @@
 import asyncio
 import json
 import logging
-import os
-import tempfile
-import zipfile
 from collections.abc import Mapping
 from collections.abc import Sequence
 from datetime import date
@@ -16,7 +13,7 @@ from polarexport.domain.const import ARCHIVE_NAME_TEMPLATE
 from polarexport.domain.entities.export import ExportManifest
 from polarexport.domain.entities.night import Night
 from polarexport.domain.enums import NightSource
-from polarexport.domain.exceptions import ArchiveAlreadyExistsError
+from polarexport.infrastructure.adapters.archivers.atomic_zip import write_zip_atomic
 from polarexport.infrastructure.adapters.archivers.serializers import _render_readme
 from polarexport.infrastructure.adapters.archivers.serializers import _serialize_manifest
 from polarexport.infrastructure.adapters.archivers.serializers import _serialize_nights_document
@@ -53,54 +50,33 @@ class ZipNightArchiver(NightArchiverPort):
         include_raw: bool,
         force: bool,
     ) -> ArchiveResult:
-        output_dir.mkdir(parents=True, exist_ok=True)
-
         target = output_dir / ARCHIVE_NAME_TEMPLATE.format(
             date_min=manifest.date_range.date_min.isoformat(),
             date_max=manifest.date_range.date_max.isoformat(),
         )
-        if target.exists() and not force:
-            raise ArchiveAlreadyExistsError(f"Archive already exists: {target}")
 
-        fd, tmp_name = tempfile.mkstemp(dir=output_dir, prefix=f".{target.name}.", suffix=".tmp")
-        tmp_path = Path(tmp_name)
-        # 0600, chosen deliberately: these archives carry nightly biometrics, the same class of data
-        # as the bearer token in credentials.json. mkstemp already creates at 0600; this makes it a
-        # decision rather than leaving it as an accident of the atomic-write mechanism.
-        os.fchmod(fd, 0o600)
-        try:
-            with (
-                os.fdopen(fd, "wb") as raw_file,
-                zipfile.ZipFile(raw_file, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file,
-            ):
-                zip_file.writestr(
-                    "manifest.json", json.dumps(_serialize_manifest(manifest), indent=2, ensure_ascii=False)
-                )
-                zip_file.writestr("README.md", _render_readme(manifest))
-                zip_file.writestr(
-                    "nights.json",
-                    json.dumps(_serialize_nights_document(nights, manifest.date_range), indent=2, ensure_ascii=False),
-                )
-                if include_raw:
-                    self._write_raw_entries(zip_file, raw)
-        except BaseException:
-            tmp_path.unlink(missing_ok=True)
-            raise
+        entries: dict[str, str] = {
+            "manifest.json": json.dumps(_serialize_manifest(manifest), indent=2, ensure_ascii=False),
+            "README.md": _render_readme(manifest),
+            "nights.json": json.dumps(
+                _serialize_nights_document(nights, manifest.date_range), indent=2, ensure_ascii=False
+            ),
+        }
+        if include_raw:
+            entries.update(self._raw_entries(raw))
 
-        tmp_path.replace(target)
-        size_bytes = target.stat().st_size
+        size_bytes = write_zip_atomic(target, entries, force=force)
         logger.info("Wrote night export archive", extra={"path": str(target), "night_count": len(nights)})
         return ArchiveResult(path=target, size_bytes=size_bytes)
 
-    def _write_raw_entries(
-        self, zip_file: zipfile.ZipFile, raw: Mapping[NightSource, Mapping[date, dict[str, Any]]]
-    ) -> None:
+    def _raw_entries(self, raw: Mapping[NightSource, Mapping[date, dict[str, Any]]]) -> dict[str, str]:
+        entries: dict[str, str] = {}
         for source in NightSource:
             payloads = raw.get(source)
             if not payloads:
                 continue
             for day in sorted(payloads):
-                zip_file.writestr(
-                    f"raw/{source.value}/{day.isoformat()}.json",
-                    json.dumps(payloads[day], indent=2, ensure_ascii=False),
+                entries[f"raw/{source.value}/{day.isoformat()}.json"] = json.dumps(
+                    payloads[day], indent=2, ensure_ascii=False
                 )
+        return entries
