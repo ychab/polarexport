@@ -18,16 +18,19 @@
 
 ## What this tool does
 
-Fetches night data from the Polar AccessLink API, accumulates raw payloads in a local `data/` store,
-and builds shareable `.zip` archives in `data/export/`.
+Fetches night data and training sessions from the Polar AccessLink API, accumulates raw payloads in a
+local `data/` store, and builds shareable `.zip` archives in `data/export/`.
 
 ```
-Polar API ──sync──▶ data/raw/ ──export──▶ data/export/*.zip
-        (only what's missing)   (offline, local files only)
+Polar API ──sync──▶ data/raw/ ──export──▶ data/export/polarexport-nights-*.zip
+        (only what's missing)   (offline, local files only)   data/export/polarexport-exercises-*.zip
 ```
 
-**Scope:** two commands, `auth` and `night`. `auth` authorizes polarexport against a Polar account and
-writes `.env`; `night` syncs and exports night data. Sport sessions and other metrics are out of
+**Scope:** three commands — `auth`, `night`, `exercise`. `auth` authorizes polarexport against a Polar
+account and writes the bearer token to `data/auth/credentials.json`; `night` syncs and exports night
+data (sleep, nightly recharge, skin temperature, SleepWise, continuous heart rate); `exercise` syncs
+and exports training sessions (duration, calories, heart-rate stats and zones, a per-minute heart-rate
+curve, derived intensity). Daily activity/step totals and night/exercise cross-linking are out of
 scope — the architecture makes them a drop-in later, but do not implement them.
 
 ## Architecture: Clean / Hexagonal
@@ -35,7 +38,7 @@ scope — the architecture makes them a drop-in later, but do not implement them
 ```
 polarexport/
 ├── domain/          # Pure Python — NO framework imports ever
-│   ├── entities/    # frozen dataclasses (Night, Sleep, NightlyRecharge, …)
+│   ├── entities/    # frozen dataclasses (Night, Sleep, NightlyRecharge, Exercise, …)
 │   ├── value_objects/  # DateRange, SleepStages
 │   ├── services/    # night_merger
 │   ├── utils/       # pure functions (date helpers)
@@ -44,14 +47,14 @@ polarexport/
 │   ├── const.py     # all domain constants
 │   └── types.py     # type aliases only
 ├── application/     # Orchestration — depends ONLY on domain
-│   ├── use_cases/   # night_sync, night_export
+│   ├── use_cases/   # night_sync, night_export, exercise_sync, exercise_export
 │   ├── inputs/      # Pydantic command/input schemas
 │   └── ports/       # ABC interfaces (providers, stores, mappers, archivers)
 └── infrastructure/  # Implements ports
     ├── adapters/
     │   ├── providers/polar/  # AccessLink client, DTOs, mappers
-    │   ├── stores/           # filesystem night store
-    │   ├── archivers/        # zip archiver
+    │   ├── stores/           # filesystem night store, filesystem exercise store, profile store
+    │   ├── archivers/        # zip archivers (nights, exercises)
     │   └── http.py           # shared HttpClientMixin
     ├── config/settings/      # Pydantic settings (POLAREXPORT_, POLAR_)
     └── entrypoints/cli/      # Typer commands + dependencies
@@ -96,7 +99,7 @@ injected dependencies and is called with per-run args (both use cases here are c
 class NightExportUseCase:
     def __init__(
         self,
-        night_store: NightStorePort,      # DI params contiguous
+        night_store: NightStorePort,  # DI params contiguous
         night_mapper: NightMapperPort,
         night_archiver: NightArchiverPort,
     ) -> None: ...
@@ -124,6 +127,10 @@ class NightExportUseCase:
 - Layout: `data/raw/<api>/<source>/<YYYY>/<MM>/<YYYY-MM-DD>.json` with a provenance envelope
   (`fetched_at`, `api`, `source`, `date`, `schema_version`, `payload`).
 - `payload: null` records "Polar was asked and had nothing" — that is what stops endless re-fetching.
+- Exercises use a different layout: `data/raw/<api>/exercise/<YYYY>/<MM>/<YYYY-MM-DD>-<id>.json` — a
+  day can hold several sessions, so the filename carries the id, and there is no `payload: null` case
+  (an id only exists because Polar returned one). Deduplication is by id via `known_ids()`, not by a
+  per-date empty marker. The Polar user profile lives at `data/raw/<api>/profile.json`.
 - All writes are atomic (temp file in the same directory + `Path.replace()`).
 - `data/auth/credentials.json` holds the bearer token and its provenance (`obtained_at`,
   `expires_in`) — state the tool produces, not configuration the user authors. `.env` holds only
@@ -138,9 +145,13 @@ class NightExportUseCase:
 - **CLI option ordering:** filters first, then processing config, then cap (`--limit`).
 
 ## Polar API rules
-- **28-day window.** AccessLink v3 retains only the last 28 days of sleep / nightly-recharge /
-  sleepwise. A `--date-min` older than that logs a warning and **still proceeds** — the local store
-  may already hold those nights.
+- **28-day window for nights.** AccessLink v3 retains only the last 28 days of sleep /
+  nightly-recharge / sleepwise. A `--date-min` older than that logs a warning and **still proceeds** —
+  the local store may already hold those nights.
+- **30-day window for exercises — not 28.** `GET /v3/exercises` has its own, longer retention and
+  **no date filter at all**: every sync fetches everything Polar still holds, and date filtering
+  happens client-side at export time, against the local store. Do not reuse `POLAR_HISTORY_WINDOW_DAYS`
+  for exercises — it is `POLAR_EXERCISE_WINDOW_DAYS`, a separate constant.
 - `404` on a date → that night has **no data**. Record a gap. Not an error.
 - `403` on a source → consent missing. Mark the source unavailable and continue with the others.
 - `429` / `5xx` / network → retried by `HttpClientMixin`'s tenacity policy.

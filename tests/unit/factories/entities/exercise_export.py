@@ -7,6 +7,7 @@ from polyfactory.factories.dataclass_factory import DataclassFactory
 
 from polarexport.domain.entities.exercise_export import ExerciseExportReport
 from polarexport.domain.entities.exercise_export import ExerciseManifest
+from polarexport.domain.entities.exercise_export import ExerciseSyncReport
 from polarexport.domain.entities.exercise_export import SportSummary
 from polarexport.domain.enums import SourceAvailability
 
@@ -39,3 +40,9 @@ class ExerciseExportReportFactory(DataclassFactory[ExerciseExportReport]):
     # since nested union factories don't inherit those constructors' validation awareness. Nothing
     # here asserts on `exercises`, so default to the same empty tuple as the entity.
     exercises = Use(lambda: ())
+
+
+class ExerciseSyncReportFactory(DataclassFactory[ExerciseSyncReport]):
+    __model__ = ExerciseSyncReport
+
+    availability = Use(lambda: SourceAvailability.AVAILABLE)

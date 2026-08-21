@@ -33,3 +33,17 @@ def parse_sources(values: list[str] | None) -> list[str]:
             raise typer.BadParameter(f"Invalid source: '{value}'. Allowed: {', '.join(allowed)}, all")
 
     return values
+
+
+def parse_sports(values: list[str] | None) -> list[str]:
+    """Normalize --sport values. Polar's sport vocabulary is open, so nothing is validated against an
+    enum. "all" is accepted as an explicit no-filter, for symmetry with --source."""
+    if not values:
+        return []
+
+    normalized = [value.strip().upper().replace("-", "_") for value in values]
+    normalized = [value for value in normalized if value]
+    if "ALL" in normalized:
+        return []
+
+    return normalized

@@ -84,6 +84,27 @@ The account export includes dozens of `ppi_samples_*` files (beat-to-beat interv
 AccessLink endpoint for this at all — Nightly Recharge's `beat_to_beat_avg` is the closest AccessLink
 gets, and it is a nightly average, not the underlying samples.
 
+## Training sessions
+
+`polarexport exercise` pulls from `GET /v3/exercises`, which retains **30 days** — a longer window
+than the nights' 28, but still nowhere near the account export's multi-year history. Everything above
+this section came from the 2026-08-20 audit, which only examined sleep and recovery files; **the
+account export's exercise side has not been audited**, so this section states only what is known about
+the API itself, not a comparison against the account export.
+
+Two things are deliberately left out of the archive, both available from Polar but not exported:
+
+- **Route / GPS data.** `?route=true` on the exercises request returns it, but `polarexport` never
+  passes that parameter — a route is a different kind of data from the training metrics this tool
+  targets, and exporting it is a separate feature to design, not a byproduct of this one.
+- **The per-second sample series.** `?samples=true` is requested and the raw samples are what the
+  minimum heart rate and the per-minute curve are derived from, so they are cached in `data/raw/` —
+  but the second-by-second series itself never reaches `exercises.json`. Only the derived, per-minute
+  curve does.
+
+Whether the account export's exercise data goes further than either of these — or than anything else
+AccessLink exposes — is an open question, not something this document claims an answer to.
+
 ## Out of scope
 
 Scraping flow.polar.com or importing the account export are both explicitly out of scope for

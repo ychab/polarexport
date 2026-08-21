@@ -8,22 +8,30 @@ import pytest
 
 from polarexport.domain.exceptions import MissingCredentialsError
 from polarexport.infrastructure.adapters.archivers.zip import ZipNightArchiver
+from polarexport.infrastructure.adapters.archivers.zip_exercise import ZipExerciseArchiver
 from polarexport.infrastructure.adapters.providers.polar.auth import PolarOAuthClient
 from polarexport.infrastructure.adapters.providers.polar.client import PolarAccessLinkClient
+from polarexport.infrastructure.adapters.providers.polar.mappers import PolarExerciseMapper
 from polarexport.infrastructure.adapters.providers.polar.mappers import PolarNightMapper
 from polarexport.infrastructure.adapters.receivers.local_http import LocalHttpCallbackReceiver
 from polarexport.infrastructure.adapters.stores.filesystem import FilesystemNightStore
+from polarexport.infrastructure.adapters.stores.filesystem_exercise import FilesystemExerciseStore
 from polarexport.infrastructure.adapters.stores.json_credentials import JsonCredentialsStore
+from polarexport.infrastructure.adapters.stores.json_profile import JsonProfileStore
 from polarexport.infrastructure.config.settings.app import app_settings
 from polarexport.infrastructure.config.settings.polar import polar_settings
 from polarexport.infrastructure.entrypoints.cli import dependencies as dependencies_module
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_auth_callback_receiver
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_credentials_store
+from polarexport.infrastructure.entrypoints.cli.dependencies import get_exercise_archiver
+from polarexport.infrastructure.entrypoints.cli.dependencies import get_exercise_mapper
+from polarexport.infrastructure.entrypoints.cli.dependencies import get_exercise_store
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_archiver
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_mapper
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_store
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_polar_client
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_polar_oauth_client
+from polarexport.infrastructure.entrypoints.cli.dependencies import get_profile_store
 
 from tests.unit.factories.entities.credentials import StoredCredentialsFactory
 
@@ -177,3 +185,19 @@ def test__get_auth_callback_receiver__builds_local_http_receiver() -> None:
 
 def test__get_credentials_store__builds_json_store() -> None:
     assert isinstance(get_credentials_store(), JsonCredentialsStore)
+
+
+def test__get_exercise_store__builds_filesystem_store() -> None:
+    assert isinstance(get_exercise_store(), FilesystemExerciseStore)
+
+
+def test__get_profile_store__builds_json_store() -> None:
+    assert isinstance(get_profile_store(), JsonProfileStore)
+
+
+def test__get_exercise_mapper__builds_polar_mapper() -> None:
+    assert isinstance(get_exercise_mapper(), PolarExerciseMapper)
+
+
+def test__get_exercise_archiver__builds_zip_archiver() -> None:
+    assert isinstance(get_exercise_archiver(), ZipExerciseArchiver)

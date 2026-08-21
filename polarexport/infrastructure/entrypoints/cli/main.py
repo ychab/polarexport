@@ -6,6 +6,7 @@ from polarexport import __version__
 from polarexport.infrastructure.config.loggers import configure_loggers
 from polarexport.infrastructure.config.settings.app import app_settings
 from polarexport.infrastructure.entrypoints.cli.commands import auth
+from polarexport.infrastructure.entrypoints.cli.commands import exercise
 from polarexport.infrastructure.entrypoints.cli.commands import night
 from polarexport.infrastructure.entrypoints.cli.parsers import parse_log_handlers
 from polarexport.infrastructure.types import LogHandler
@@ -19,6 +20,7 @@ app = typer.Typer(
 
 app.command(name="auth", help="Authorize polarexport against your Polar account")(auth.auth)
 app.command(name="night", help="Export nightly sleep & recovery data as a zip archive")(night.night)
+app.command(name="exercise", help="Export training sessions as a zip archive")(exercise.exercise)
 
 
 def version_callback(show_version: bool) -> None:

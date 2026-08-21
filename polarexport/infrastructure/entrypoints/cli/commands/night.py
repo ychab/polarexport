@@ -17,7 +17,6 @@ from polarexport.application.inputs.night import NightExportInput
 from polarexport.application.inputs.night import NightSyncInput
 from polarexport.application.use_cases.night_export import NightExportUseCase
 from polarexport.application.use_cases.night_sync import NightSyncUseCase
-from polarexport.domain.const import CREDENTIALS_FILENAME
 from polarexport.domain.const import POLAR_HISTORY_WINDOW_DAYS
 from polarexport.domain.entities.export import ExportReport
 from polarexport.domain.entities.sync import SyncReport
@@ -35,6 +34,7 @@ from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_ar
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_mapper
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_night_store
 from polarexport.infrastructure.entrypoints.cli.dependencies import get_polar_client
+from polarexport.infrastructure.entrypoints.cli.messages import unauthorized_message
 from polarexport.infrastructure.entrypoints.cli.parsers import parse_date
 from polarexport.infrastructure.entrypoints.cli.parsers import parse_sources
 
@@ -64,19 +64,6 @@ async def night_logic(
     ).export(export_in, today=today, generated_at=generated_at)
 
     return sync_report, export_report
-
-
-def _unauthorized_message() -> str:
-    stored = asyncio.run(get_credentials_store().read(app_settings.AUTH_DIR / CREDENTIALS_FILENAME))
-    if stored is not None and stored.is_expired(now=datetime.now(UTC)):
-        expired_at = stored.obtained_at + timedelta(seconds=stored.expires_in)
-        return (
-            f"Your Polar token expired on {expired_at.date().isoformat()}. Run `polarexport auth` to authorize again."
-        )
-    return (
-        "Authentication failed (401 Unauthorized). Run `polarexport auth` to authorize again, or check "
-        "`POLAR_ACCESS_TOKEN` in `.env` if you set it by hand — see `docs/authentication.md`."
-    )
 
 
 def night(
@@ -175,7 +162,7 @@ def night(
         raise typer.Exit(code=1) from e
     except httpx.HTTPStatusError as e:
         if e.response.status_code == codes.UNAUTHORIZED:
-            typer.secho(_unauthorized_message(), fg=typer.colors.RED, err=True)
+            typer.secho(unauthorized_message(get_credentials_store), fg=typer.colors.RED, err=True)
         else:
             typer.secho(
                 f"Polar returned HTTP {e.response.status_code} even after retries. Nights already "

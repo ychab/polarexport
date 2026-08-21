@@ -8,12 +8,16 @@ from polarexport.domain.const import API_NAME
 from polarexport.domain.const import CREDENTIALS_FILENAME
 from polarexport.domain.exceptions import MissingCredentialsError
 from polarexport.infrastructure.adapters.archivers.zip import ZipNightArchiver
+from polarexport.infrastructure.adapters.archivers.zip_exercise import ZipExerciseArchiver
 from polarexport.infrastructure.adapters.providers.polar.auth import PolarOAuthClient
 from polarexport.infrastructure.adapters.providers.polar.client import PolarAccessLinkClient
+from polarexport.infrastructure.adapters.providers.polar.mappers import PolarExerciseMapper
 from polarexport.infrastructure.adapters.providers.polar.mappers import PolarNightMapper
 from polarexport.infrastructure.adapters.receivers.local_http import LocalHttpCallbackReceiver
 from polarexport.infrastructure.adapters.stores.filesystem import FilesystemNightStore
+from polarexport.infrastructure.adapters.stores.filesystem_exercise import FilesystemExerciseStore
 from polarexport.infrastructure.adapters.stores.json_credentials import JsonCredentialsStore
+from polarexport.infrastructure.adapters.stores.json_profile import JsonProfileStore
 from polarexport.infrastructure.config.settings.app import app_settings
 from polarexport.infrastructure.config.settings.polar import polar_settings
 
@@ -70,6 +74,22 @@ def get_night_mapper() -> PolarNightMapper:
 
 def get_night_archiver() -> ZipNightArchiver:
     return ZipNightArchiver()
+
+
+def get_exercise_store() -> FilesystemExerciseStore:
+    return FilesystemExerciseStore(data_dir=app_settings.RAW_DIR)
+
+
+def get_profile_store() -> JsonProfileStore:
+    return JsonProfileStore(data_dir=app_settings.RAW_DIR)
+
+
+def get_exercise_mapper() -> PolarExerciseMapper:
+    return PolarExerciseMapper()
+
+
+def get_exercise_archiver() -> ZipExerciseArchiver:
+    return ZipExerciseArchiver()
 
 
 def get_polar_oauth_client(client_id: str, client_secret: str) -> PolarOAuthClient:

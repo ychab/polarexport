@@ -10,8 +10,9 @@
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
-Export your Polar night data — sleep, nightly recharge, skin temperature, SleepWise, continuous heart
-rate — as a self-contained `.zip` archive you can hand to an AI agent for analysis.
+Export your Polar night data and training sessions — sleep, nightly recharge, skin temperature,
+SleepWise, continuous heart rate, exercises with heart-rate zones and derived intensity — as
+self-contained `.zip` archives you can hand to an AI agent for analysis.
 
 ## Why this exists
 
@@ -22,21 +23,21 @@ and hands you an archive in seconds.
 ## How it works
 
 ```
-Polar API ──sync──▶ data/raw/ ──export──▶ data/export/*.zip
-        (only what's missing)   (offline, local files only)
+Polar API ──sync──▶ data/raw/ ──export──▶ data/export/polarexport-nights-*.zip
+        (only what's missing)   (offline, local files only)   data/export/polarexport-exercises-*.zip
 ```
 
 Every payload polarexport fetches is written to a local `data/` store and **never thrown away**.
 Archives are built from that store, not from the API.
 
-This matters because **Polar AccessLink v3 only retains the last 28 days** of sleep and recovery data.
-A tool that fetches on demand could never show you more than a month. By keeping everything it has
-ever seen, polarexport turns a rolling 28-day window into unbounded local history — run it once a
-month and your archive grows forever.
+This matters because **Polar AccessLink v3 only retains the last 28 days** of sleep and recovery data
+(30 for exercises — see the `exercise` section below). A tool that fetches on demand could never show
+you more than a month. By keeping everything it has ever seen, polarexport turns a rolling window into
+unbounded local history — run it once a month and your archive grows forever.
 
-> **Be clear-eyed about the limit:** this cannot recover nights from *before* you started running it.
-> For those, Polar's own account export is still the only source. Start running it now and the problem
-> solves itself going forward.
+> **Be clear-eyed about the limit:** this cannot recover nights or sessions from *before* you started
+> running it. For those, Polar's own account export is still the only source. Start running it now and
+> the problem solves itself going forward.
 
 `data/` is the durable asset and worth backing up. `data/export/` is disposable — regenerate it any time.
 
@@ -153,15 +154,72 @@ polarexport night --no-refresh --date-min 2026-01-01     # offline, from the loc
 polarexport night --source sleep --source recharge       # subset of sources
 ```
 
+### `exercise` — export your training sessions
+
+```bash
+polarexport exercise --help
+```
+
+| Option | Description |
+|---|---|
+| `--date-min`, `-f` | First session to export (`YYYY-MM-DD`). Defaults to 29 days ago. |
+| `--date-max`, `-t` | Last session to export (`YYYY-MM-DD`). Defaults to today. |
+| `--sport` | Repeatable, matched against `detailed_sport_info` (e.g. `kickboxing-martial-arts`); open vocabulary, or `all` (default). |
+| `--refresh` / `--no-refresh` | Fetch sessions from Polar first (default), or build the archive offline from `data/` only. |
+| `--force-refresh` | Re-fetch sessions already present in `data/raw/`. Requires `--refresh`. |
+| `--with-raw` / `--no-raw` | Include the untouched Polar payloads under `raw/` in the archive (default: included). |
+| `--with-samples` / `--no-samples` | Include the per-minute heart-rate curve (default: included). |
+| `--output-dir` | Where to write the archive. Defaults to `data/export`. |
+| `--force` | Overwrite an existing archive at the target path. |
+| `--limit` | Export at most this many sessions, most recent first. |
+
+`GET /v3/exercises` has **no date filter** and retains **30 days**, not the nights' 28 — see
+[`docs/api-vs-account-export.md`](docs/api-vs-account-export.md) for what that means for a sync.
+
+Worked examples:
+
+```bash
+polarexport exercise                                             # last 30 days
+polarexport exercise --sport kickboxing-martial-arts --no-raw    # one sport, no raw payloads
+polarexport exercise --no-refresh --force                        # rebuild offline from data/
+```
+
+Real output, run against a store holding three sessions:
+
+```
+                                         Export
+┌───────────────────┬──────────────────────────────────────────────────────────┐
+│ Metric             │ Value                                                    │
+├───────────────────┼──────────────────────────────────────────────────────────┤
+│ Sessions Exported  │ 3                                                        │
+│ Total Duration     │ 3h 40m                                                   │
+│ Total Calories     │ 1945                                                     │
+│ Availability       │ available                                                │
+│ Archive            │ data/export/polarexport-exercises-2026-08-17_2026-08-20.zip │
+│ Size               │ 7.3 KB                                                   │
+└───────────────────┴──────────────────────────────────────────────────────────┘
+                                         By Sport
+┌─────────────────────────┬──────────┬────────────────┬────────────────┬──────────────────┐
+│ Sport                   │ Sessions │ Total Duration │ Total Calories │ Mean Cardio Load │
+├─────────────────────────┼──────────┼────────────────┼────────────────┼──────────────────┤
+│ Kickboxing Martial Arts │        1 │         1h 27m │            786 │             81.2 │
+│ Walking                 │        1 │         1h 10m │            633 │             45.2 │
+│ Aerobics                │        1 │         1h 02m │            526 │             38.3 │
+└─────────────────────────┴──────────┴────────────────┴────────────────┴──────────────────┘
+Archive written to data/export/polarexport-exercises-2026-08-17_2026-08-20.zip
+```
+
 ### Keeping history
 
 This is the section that earns the project its keep. Polar AccessLink only retains 28 days of sleep and
-recovery data — run `polarexport night` **on a schedule** and `data/` accumulates nights forever, even
-though Polar's own window never moves. A monthly cron entry is enough to never lose a night again:
+recovery data (30 for exercises) — run `polarexport night` and `polarexport exercise` **on a schedule**
+and `data/` accumulates history forever, even though Polar's own window never moves. A monthly cron
+entry is enough to never lose a night or a session again:
 
 ```cron
 # Refresh the local store on the 1st of every month at 06:00
 0 6 1 * * cd /path/to/polarexport && uv run polarexport night --output-dir /dev/null >> polarexport.log 2>&1
+5 6 1 * * cd /path/to/polarexport && uv run polarexport exercise --output-dir /dev/null >> polarexport.log 2>&1
 ```
 
 (Writing the archive to `/dev/null` there is deliberate — the point of a scheduled run is feeding `data/`,
