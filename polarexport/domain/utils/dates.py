@@ -17,5 +17,5 @@ def history_window_start(today: date) -> date:
     return today - timedelta(days=POLAR_HISTORY_WINDOW_DAYS - 1)
 
 
-def is_outside_history_window(day: date, *, today: date) -> bool:
-    return day < history_window_start(today)
+def is_outside_history_window(day: date, *, today: date, window_days: int = POLAR_HISTORY_WINDOW_DAYS) -> bool:
+    return day < today - timedelta(days=window_days - 1)

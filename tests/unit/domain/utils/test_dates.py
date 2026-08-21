@@ -36,3 +36,11 @@ class TestIsOutsideHistoryWindow:
     def test__outside_window(self) -> None:
         today = date(2026, 8, 17)
         assert is_outside_history_window(history_window_start(today) - timedelta(days=1), today=today) is True
+
+    def test__custom_window_days__inside(self) -> None:
+        today = date(2026, 8, 20)
+        assert is_outside_history_window(today - timedelta(days=29), today=today, window_days=30) is False
+
+    def test__custom_window_days__outside(self) -> None:
+        today = date(2026, 8, 20)
+        assert is_outside_history_window(today - timedelta(days=30), today=today, window_days=30) is True

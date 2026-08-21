@@ -69,3 +69,42 @@ class SourceAvailability(StrEnum):
     UNAVAILABLE = "unavailable"  # 403 / consent missing
     NOT_REQUESTED = "not_requested"
     NO_DATA = "no_data"  # requested, consent fine, but the local store held nothing for the range
+
+
+class SampleType(IntEnum):
+    """Polar exercise sample-series type ids.
+
+    `HEART_RATE` is confirmed: phase 21's live capture showed type "0" carrying 70-175 bpm values
+    whose mean reproduces Polar's own `heart_rate.average`. The rest come from Polar's documentation —
+    the audited sessions were all indoor, so types "1" and "10" were present but all-zero and their
+    identity is inferred, not verified. Confirm SPEED and DISTANCE against a real outdoor session
+    before trusting them (see phase 23).
+    """
+
+    HEART_RATE = 0
+    SPEED = 1
+    CADENCE = 2
+    ALTITUDE = 3
+    POWER = 4
+    POWER_PEDALING_INDEX = 5
+    POWER_LEFT_RIGHT_BALANCE = 6
+    AIR_PRESSURE = 7
+    RUNNING_CADENCE = 8
+    TEMPERATURE = 9
+    DISTANCE = 10
+    RR_INTERVAL = 11
+
+
+class LoadInterpretation(StrEnum):
+    """Polar's verbal reading of a training-load figure.
+
+    `MEDIUM`, `HIGH` and `NOT_AVAILABLE` were observed live; the others are documented by Polar.
+    Unknown values must map to `None` with a warning, never raise — see the mapper rule in phase 23.
+    """
+
+    NOT_AVAILABLE = "NOT_AVAILABLE"
+    VERY_LOW = "VERY_LOW"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    VERY_HIGH = "VERY_HIGH"
