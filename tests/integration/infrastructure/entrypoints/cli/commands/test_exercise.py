@@ -104,6 +104,10 @@ class TestExerciseLogic:
             assert kickboxing["heart_rate"]["minimum"] < kickboxing["heart_rate"]["average"]
             assert kickboxing["heart_rate_per_minute"] is not None
 
+            walk = sessions["PvkgKa3J"]
+            assert walk["speed"] is not None
+            assert abs(walk["speed"]["average_kmh"] - walk["average_speed_kmh"]) < 0.5
+
     async def test__second_run__known_sessions_skipped_not_rewritten(
         self,
         date_range: DateRange,

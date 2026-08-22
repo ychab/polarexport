@@ -58,8 +58,10 @@ class Exercise:
     def average_speed_kmh(self) -> float | None:
         """Derived from distance and duration, not from the speed sample series.
 
-        Both inputs have units confirmed by Polar's swagger (metres, ISO-8601 duration), so this figure
-        is trustworthy today. The sample-derived figures in `speed` are not — see phase 23.
+        Both this figure and `speed` are trustworthy, but they measure different things:
+        `average_speed_kmh` is the whole-session average, including any stopped time, while `speed`
+        is derived from the per-second sample series. Comparing the two shows how much of a session
+        was spent stationary.
         """
         if self.distance_meters is None or not self.duration_seconds:
             return None

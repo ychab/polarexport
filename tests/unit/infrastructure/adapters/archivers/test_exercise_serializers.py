@@ -10,6 +10,7 @@ from polarexport.domain.enums import SourceAvailability
 from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.domain.value_objects.heart_rate_stats import HeartRateStats
 from polarexport.domain.value_objects.heart_rate_zone import HeartRateZone
+from polarexport.domain.value_objects.speed_stats import SpeedStats
 from polarexport.domain.value_objects.training_load import TrainingLoad
 from polarexport.infrastructure.adapters.archivers.exercise_serializers import _iso
 from polarexport.infrastructure.adapters.archivers.exercise_serializers import _render_load_interpretation_table
@@ -24,6 +25,7 @@ from polarexport.infrastructure.adapters.archivers.exercise_serializers import _
 from polarexport.infrastructure.adapters.archivers.exercise_serializers import _serialize_load_interpretation
 from polarexport.infrastructure.adapters.archivers.exercise_serializers import _serialize_manifest
 from polarexport.infrastructure.adapters.archivers.exercise_serializers import _serialize_profile
+from polarexport.infrastructure.adapters.archivers.exercise_serializers import _serialize_speed_stats
 from polarexport.infrastructure.adapters.archivers.exercise_serializers import _serialize_sport_summary
 from polarexport.infrastructure.adapters.archivers.exercise_serializers import _serialize_training_load
 
@@ -56,6 +58,19 @@ class TestSerializeHeartRateZone:
             "lower_limit": 98,
             "upper_limit": 118,
             "seconds": 941,
+        }
+
+
+class TestSerializeSpeedStats:
+    def test__none__returns_none(self) -> None:
+        assert _serialize_speed_stats(None) is None
+
+    def test__value__returns_dict(self) -> None:
+        speed = SpeedStats(average_kmh=4.36, maximum_kmh=12.4725, minimum_kmh=0.0285)
+        assert _serialize_speed_stats(speed) == {
+            "average_kmh": 4.36,
+            "maximum_kmh": 12.4725,
+            "minimum_kmh": 0.0285,
         }
 
 
@@ -153,6 +168,31 @@ class TestSerializeExercise:
         document = _serialize_exercise(exercise, include_samples=True)
 
         assert document["heart_rate_zones"] is None
+
+    def test__speed_present__emits_three_fields(self) -> None:
+        exercise = Exercise(
+            id="54klrKbL",
+            start_time=datetime(2026, 8, 18, 11, 32, 8, tzinfo=UTC),
+            date=date(2026, 8, 18),
+            speed=SpeedStats(average_kmh=4.36, maximum_kmh=12.4725, minimum_kmh=0.0285),
+        )
+
+        document = _serialize_exercise(exercise, include_samples=True)
+
+        assert document["speed"] == {"average_kmh": 4.36, "maximum_kmh": 12.4725, "minimum_kmh": 0.0285}
+
+    def test__speed_none__key_present_with_none_value(self) -> None:
+        exercise = Exercise(
+            id="54klrKbL",
+            start_time=datetime(2026, 8, 18, 11, 32, 8, tzinfo=UTC),
+            date=date(2026, 8, 18),
+            speed=None,
+        )
+
+        document = _serialize_exercise(exercise, include_samples=True)
+
+        assert "speed" in document
+        assert document["speed"] is None
 
     def test__heart_rate_zones_present__serializes_each_zone(self) -> None:
         exercise = Exercise(

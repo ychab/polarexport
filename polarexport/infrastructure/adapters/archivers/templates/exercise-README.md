@@ -46,6 +46,9 @@ consumer. The one exception is `heart_rate_per_minute`, covered below.
 | `calories_per_hour` | kcal/h | **Derived**: `calories / (duration_seconds / 3600)` |
 | `distance_km` | kilometres | Polar's API returns metres; converted here. `null` for sessions with no GPS/distance data (e.g. indoor kickboxing) |
 | `average_speed_kmh` | km/h | **Derived**: `distance_km / (duration_seconds / 3600)`. `null` whenever `distance_km` is `null` |
+| `speed.average_kmh` | km/h | Mean of Polar's per-second speed sample series, including zero samples. Close to `average_speed_kmh`; a large gap means the series has gaps |
+| `speed.maximum_kmh` | km/h | Fastest recorded sample |
+| `speed.minimum_kmh` | km/h | Slowest **moving** sample — zero samples are excluded as pauses, so this is never `0` |
 | `heart_rate.average` / `.maximum` | bpm | Polar's own figures |
 | `heart_rate.minimum` | bpm | **Derived** — Polar's `HeartRate` schema has no `minimum`; this is computed from the per-second sample series, which is never itself shipped in this archive |
 | `heart_rate_zones` | see below | Time spent in each of the user's five heart-rate zones |
@@ -54,6 +57,17 @@ consumer. The one exception is `heart_rate_per_minute`, covered below.
 | `device` | string | The device or app that recorded the session |
 | `running_index` | integer | Polar's running performance index, when the device supports it |
 | `fat_percentage` | percent | Estimated share of calories burned from fat, when Polar reports it |
+
+### `speed` vs `average_speed_kmh`
+
+`average_speed_kmh` is **derived** from `distance_km / (duration_seconds / 3600)` — the whole-session
+average, including any time spent stopped. The `speed` block instead comes from Polar's per-second
+speed sample series, so `speed.average_kmh` measures the same thing but including every sample the
+device recorded, stopped or moving. Comparing the two shows how much of a session was spent
+stationary: a large gap between them means the session had significant stopped time. `speed` is
+`null` for every indoor session — Polar's device does not record a speed series without GPS — and the
+km/h units were verified against a session with an independently known distance and duration, not
+assumed from the API schema.
 
 ### `sport` vs `sport_label`
 

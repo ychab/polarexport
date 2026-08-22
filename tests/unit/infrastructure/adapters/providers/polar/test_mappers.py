@@ -407,7 +407,26 @@ class TestPolarExerciseMapper:
         assert speed is not None
         assert speed.average_kmh == 1.875
         assert speed.maximum_kmh == 5.0
-        assert speed.minimum_kmh == 0.0
+        assert speed.minimum_kmh == 2.5
+
+    def test__to_exercises__speed_samples_with_zeros__minimum_excludes_zeros(
+        self, mapper: PolarExerciseMapper
+    ) -> None:
+        # Regression: the walking session in tests/assets/polar/exercises.json has 305 zero samples
+        # out of 4 257 (pauses, traffic lights, GPS dropouts) — a naive min() would report 0.0 km/h.
+        payload = {
+            "id": "abc123",
+            "start_time": "2026-08-20T17:18:33",
+            "start_time_utc_offset": 120,
+            "samples": [{"sample_type": 1, "recording_rate": 1, "data": "0,0,1.5,3.0,0"}],
+        }
+
+        exercises = mapper.to_exercises({"abc123": payload})
+
+        speed = exercises[0].speed
+        assert speed is not None
+        assert speed.minimum_kmh == 1.5
+        assert speed.minimum_kmh > 0
 
     def test__to_exercises__malformed_payload__skipped(
         self, mapper: PolarExerciseMapper, caplog: pytest.LogCaptureFixture

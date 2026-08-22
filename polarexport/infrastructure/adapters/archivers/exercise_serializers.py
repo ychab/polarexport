@@ -12,6 +12,7 @@ from polarexport.domain.enums import LoadInterpretation
 from polarexport.domain.value_objects.date_range import DateRange
 from polarexport.domain.value_objects.heart_rate_stats import HeartRateStats
 from polarexport.domain.value_objects.heart_rate_zone import HeartRateZone
+from polarexport.domain.value_objects.speed_stats import SpeedStats
 from polarexport.domain.value_objects.training_load import TrainingLoad
 
 _EXERCISES_SCHEMA_VERSION = 1
@@ -41,6 +42,16 @@ def _serialize_heart_rate(heart_rate: HeartRateStats | None) -> dict[str, int | 
         "average": heart_rate.average,
         "maximum": heart_rate.maximum,
         "minimum": heart_rate.minimum,
+    }
+
+
+def _serialize_speed_stats(speed: SpeedStats | None) -> dict[str, float | None] | None:
+    if speed is None:
+        return None
+    return {
+        "average_kmh": speed.average_kmh,
+        "maximum_kmh": speed.maximum_kmh,
+        "minimum_kmh": speed.minimum_kmh,
     }
 
 
@@ -84,6 +95,7 @@ def _serialize_exercise(exercise: Exercise, *, include_samples: bool) -> dict[st
         "calories_per_hour": exercise.calories_per_hour,
         "distance_km": exercise.distance_km,
         "average_speed_kmh": exercise.average_speed_kmh,
+        "speed": _serialize_speed_stats(exercise.speed),
         "heart_rate": _serialize_heart_rate(exercise.heart_rate),
         "heart_rate_zones": (
             [_serialize_heart_rate_zone(zone) for zone in exercise.heart_rate_zones]

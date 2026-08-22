@@ -289,14 +289,20 @@ def _speed_stats_from_samples(samples: Sequence[float | None]) -> SpeedStats | N
     an assumed m/s series would give ~15.7 km/h — an impossible pace for that walk. Every indoor session
     in the same capture carries an all-zero type-1 series (Polar still returns the field, just empty),
     so a series with no positive value is treated as absent rather than a real "0 km/h" measurement.
+
+    The minimum is taken over positive samples only, matching `heart_rate_stats`: a 0 km/h sample is a
+    pause, a traffic light or a GPS dropout, not a genuine minimum speed, and shipping it as
+    `minimum_kmh` would be actively misleading. The average stays over every present sample, including
+    zeros, so it remains comparable to `average_speed_kmh`.
     """
     present = [sample for sample in samples if sample is not None]
-    if not present or not any(sample > 0 for sample in present):
+    positive = [sample for sample in present if sample > 0]
+    if not positive:
         return None
     return SpeedStats(
         average_kmh=round(sum(present) / len(present), 4),
-        maximum_kmh=max(present),
-        minimum_kmh=min(present),
+        maximum_kmh=round(max(positive), 4),
+        minimum_kmh=round(min(positive), 4),
     )
 
 
