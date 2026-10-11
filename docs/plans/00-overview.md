@@ -242,6 +242,21 @@ All six phases landed green — `make lint` clean, 638 tests, 100 % branch cover
 Both are standalone and independent of each other. Phase 26 first — it is a privacy issue in a public
 repo. Phase 27 is the only part of the original request still unmet.
 
+## Follow-ups from the 2026-08-22 review of phases 26–27
+
+Both landed green — 643 tests, 100 % branch coverage — and the `speed` block now reaches the archive.
+One defect and one loose end:
+
+| # | Phase | Why | Real token? |
+|---|---|---|---|
+| 28 | `speed.minimum_kmh` is noise | excluding exact zeros was not enough; the field returns a stopped sample carrying float noise (0.0004 km/h for a run), and no threshold fixes a raw minimum over a stop-start activity | no |
+
+Also outstanding, too small for a phase of its own — fold it into 28: `docs/plans/26-*-DONE.md` still
+contains the real birthdate it was written to remove, because the plan text quoted the literal four
+times while instructing the agent to delete it everywhere else. Replace those with a description
+("the account owner's real birthdate") so the grep in that plan's own acceptance section finally
+passes.
+
 
 ## Definition of done — every phase
 
